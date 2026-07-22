@@ -35,3 +35,29 @@ def test_options_endpoint_accepts_expiration_query() -> None:
     payload = response.json()
     assert payload["symbol"] == "QQQ"
     assert {contract["occ_symbol"][3:9] for contract in payload["contracts"]} == {"260320"}
+
+
+def test_greeks_endpoint_rejects_missing_option_chain_fields() -> None:
+    with TestClient(app) as client:
+        response = client.post("/options/greeks", json={"additionalProp1": {}})
+
+    assert response.status_code == 422
+    assert response.status_code != 500
+
+
+def test_gamma_exposure_endpoint_rejects_missing_option_chain_fields() -> None:
+    with TestClient(app) as client:
+        response = client.post("/options/gamma-exposure", json={"additionalProp1": {}})
+
+    assert response.status_code == 422
+    assert response.status_code != 500
+
+
+def test_option_chain_request_schema_includes_valid_swagger_example() -> None:
+    with TestClient(app) as client:
+        response = client.get("/openapi.json")
+
+    assert response.status_code == 200
+    schema = response.json()["components"]["schemas"]["OptionChainRequest"]
+    assert schema["example"]["symbol"] == "SPY"
+    assert schema["example"]["contracts"][0]["occ_symbol"] == "SPY260220C00540000"
