@@ -4,7 +4,10 @@ from dataclasses import dataclass
 
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
+from backend.adapters.providers.fake import FakeMarketDataProvider
 from backend.adapters.storage.postgresql import PostgreSQLStorage
+from backend.application.use_cases import GetMarketSnapshotUseCase
+from backend.domain.ports import IDataProvider
 from backend.core.settings import Settings, get_settings
 
 
@@ -20,6 +23,8 @@ class Container:
     database_engine: AsyncEngine
     session_factory: async_sessionmaker[AsyncSession]
     storage: PostgreSQLStorage
+    market_data_provider: IDataProvider
+    get_market_snapshot_use_case: GetMarketSnapshotUseCase
 
 
 def build_container() -> Container:
@@ -30,9 +35,13 @@ def build_container() -> Container:
     database_engine = create_engine(settings.database_url, echo=settings.database_echo)
     session_factory = create_session_factory(database_engine)
     storage = PostgreSQLStorage(session_factory)
+    market_data_provider = FakeMarketDataProvider()
+    get_market_snapshot_use_case = GetMarketSnapshotUseCase(market_data_provider)
     return Container(
         settings=settings,
         database_engine=database_engine,
         session_factory=session_factory,
         storage=storage,
+        market_data_provider=market_data_provider,
+        get_market_snapshot_use_case=get_market_snapshot_use_case,
     )
