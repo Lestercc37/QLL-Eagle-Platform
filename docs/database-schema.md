@@ -40,7 +40,7 @@ Motor: PostgreSQL + extensión TimescaleDB para las tablas de series temporales 
 | theta | numeric | nullable — se agrega según necesidad (Domain Model v1.1) |
 | vega | numeric | nullable — se agrega según necesidad |
 
-Charm/Vanna/Vomma: no tienen columna todavía — se agregan solo cuando el Gamma Engine (Etapa 7) los necesite para el modelo de Dealer Bias.
+Charm/Vanna/Vomma: no tienen columna todavía — se agregan solo cuando el Gamma Engine los necesite para el modelo de Dealer Bias.
 
 Índice compuesto: `(contract_id, time DESC)`.
 
@@ -57,8 +57,9 @@ Tabla oficial para el histórico de la entidad de dominio `GammaAggregate` (Doma
 | max_pain | numeric | precio |
 | net_gamma | numeric | |
 | dealer_gamma_notional | numeric | |
+| peak_gamma_strike | numeric | Absolute Gamma / Peak Gamma Strike |
 
-`dealer_position` (`long_gamma`/`short_gamma`) **no es columna** — es una métrica derivada dentro de `GammaAggregate` a partir del signo de `net_gamma`, tanto en la API como en cualquier consumidor. `dealer_bias` y demás métricas agregadas se agregan a esta tabla solo cuando el modelo oficial del Gamma Engine las defina.
+`dealer_position` (`long_gamma`/`short_gamma`) **no es columna** — es una métrica derivada dentro de `GammaAggregate` a partir del signo de `net_gamma`, tanto en la API como en cualquier consumidor. `GammaExposure[]` nunca se persiste y nunca llega a `IStorage`; solo `GammaAggregate` se almacena en `gamma_aggregates`. `dealer_bias` y demás métricas agregadas se agregan a esta tabla solo cuando el modelo oficial del Gamma Engine las defina.
 
 Índice compuesto: `(underlying_id, time DESC)`.
 
