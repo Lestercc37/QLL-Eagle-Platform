@@ -22,6 +22,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     try:
         yield
     finally:
+        await container.database_engine.dispose()
         logger.info("Stopping %s", container.settings.app_name)
 
 

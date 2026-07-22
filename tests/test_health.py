@@ -21,3 +21,19 @@ def test_openapi_schema_is_available() -> None:
 
     assert response.status_code == 200
     assert response.json()["info"]["title"] == "QLL Eagle Platform"
+
+
+def test_database_health_endpoint_checks_connection() -> None:
+    with TestClient(app) as client:
+        response = client.get("/health/db")
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok", "database": "connected"}
+
+
+def test_docs_are_available() -> None:
+    with TestClient(app) as client:
+        response = client.get("/docs")
+
+    assert response.status_code == 200
+    assert "Swagger UI" in response.text
