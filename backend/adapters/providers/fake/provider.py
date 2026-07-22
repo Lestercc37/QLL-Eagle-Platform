@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date, timedelta
+from datetime import date, datetime, timezone
 from decimal import Decimal
 from typing import AsyncIterator
 
@@ -20,13 +20,14 @@ class FakeMarketDataProvider:
 
     def get_option_chain(self, underlying: str, expiration: date | None = None) -> OptionChain:
         symbol = underlying.upper()
-        exp = expiration or (utc_now().date() + timedelta(days=30))
+        as_of = datetime(2026, 1, 15, 14, 30, tzinfo=timezone.utc)
+        exp = expiration or date(2026, 2, 20)
         contracts = tuple(
             _contract(symbol, strike, exp, contract_type)
             for strike in (Decimal("540"), Decimal("545"), Decimal("550"))
             for contract_type in (ContractType.CALL, ContractType.PUT)
         )
-        return OptionChain(symbol=symbol, as_of=utc_now(), contracts=contracts)
+        return OptionChain(symbol=symbol, as_of=as_of, contracts=contracts)
 
     def get_underlying_snapshot(self, underlying: str) -> MarketSnapshot:
         return MarketSnapshot(
