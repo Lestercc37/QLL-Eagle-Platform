@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 
-from pydantic import Field
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -18,6 +18,11 @@ class Settings(BaseSettings):
     openapi_url: str = Field(default="/openapi.json")
     docs_url: str = Field(default="/docs")
     redoc_url: str = Field(default="/redoc")
+    database_url: str = Field(
+        default="sqlite+aiosqlite:///./qll_eagle.db",
+        validation_alias=AliasChoices("DATABASE_URL", "QLL_DATABASE_URL"),
+    )
+    database_echo: bool = Field(default=False)
 
 
 @lru_cache
