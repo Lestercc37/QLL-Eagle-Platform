@@ -7,8 +7,26 @@ from backend.adapters.notifications.noop import NoopNotificationService
 from backend.adapters.providers.mock.provider import MockDataProvider
 from backend.adapters.storage.memory import InMemoryStorage
 from backend.api.serializers import chain_response, gamma_response, websocket_message
-from backend.domain.models import Expiration, GammaAggregate, MarketPrice, dealer_position, utc_now
-from backend.domain.use_cases import build_market_snapshot, calculate_gamma_exposure, get_option_chain
+from backend.domain.models import (
+    Expiration,
+    GammaAggregate,
+    InvalidExpirationError,
+    InvalidOptionError,
+    InvalidStrikeError,
+    MarketPrice,
+    MarketState,
+    OptionGreeks,
+    OptionSnapshot,
+    OptionType,
+    Side,
+    dealer_position,
+    utc_now,
+)
+from backend.domain.use_cases import (
+    build_market_snapshot,
+    calculate_gamma_exposure,
+    get_option_chain,
+)
 
 
 def test_dealer_position_is_derived_from_net_gamma() -> None:
@@ -78,3 +96,64 @@ def test_websocket_message_always_includes_schema_version() -> None:
     assert payload["schema_version"] == 1
     assert payload["channel"] == "gamma"
     assert payload["symbol"] == "SPY"
+
+
+def test_domain_model_exposes_required_alias_enums_and_snapshot() -> None:
+    contract = MockDataProvider().get_option_chain("spy").contracts[0]
+    snapshot = OptionSnapshot(contract=contract, greeks=contract.greeks, as_of=utc_now())
+
+    assert OptionType.CALL.value == "call"
+    assert Side.UNKNOWN.value == "unknown"
+    assert MarketState.UNKNOWN.value == "unknown"
+    assert snapshot.contract.underlying == "SPY"
+
+
+def test_domain_model_rejects_invalid_contract_strike() -> None:
+    contract = MockDataProvider().get_option_chain("spy").contracts[0]
+
+    with pytest.raises(InvalidStrikeError):
+        type(contract)(
+            underlying=contract.underlying,
+            strike=Decimal("0"),
+            expiration=contract.expiration,
+            contract_type=contract.contract_type,
+            occ_symbol=contract.occ_symbol,
+            bid=contract.bid,
+            ask=contract.ask,
+            last=contract.last,
+            volume=contract.volume,
+            open_interest=contract.open_interest,
+            iv=contract.iv,
+            greeks=contract.greeks,
+        )
+
+
+def test_domain_model_rejects_expiration_before_as_of() -> None:
+    with pytest.raises(InvalidExpirationError):
+        Expiration(expiration=date(2026, 7, 21), as_of=date(2026, 7, 22))
+
+
+def test_domain_model_rejects_invalid_contract_quote_and_greeks() -> None:
+    contract = MockDataProvider().get_option_chain("spy").contracts[0]
+
+    with pytest.raises(InvalidOptionError):
+        type(contract)(
+            underlying=contract.underlying,
+            strike=contract.strike,
+            expiration=contract.expiration,
+            contract_type=contract.contract_type,
+            occ_symbol=contract.occ_symbol,
+            bid=Decimal("2"),
+            ask=Decimal("1"),
+            last=Decimal("1.5"),
+            volume=1,
+            open_interest=1,
+            iv=Decimal("0.2"),
+            greeks=contract.greeks,
+        )
+
+    with pytest.raises(InvalidOptionError):
+        OptionGreeks(delta=Decimal("1.1"), gamma=Decimal("0.01"))
+
+    with pytest.raises(InvalidOptionError):
+        OptionGreeks(delta=Decimal("0.5"), gamma=Decimal("NaN"))
