@@ -1,7 +1,7 @@
 # QLL — Arquitectura (Etapa 0)
 
 Estado: aprobado para inicio de implementación
-Ámbito: decisiones caras de cambiar después (capas, esquema DB, contratos API/WS). Convenciones de naming y estrategia de testing se resuelven como guía ligera (ver `docs/conventions.md`, se escribe durante Etapa 1, no bloquea el inicio).
+Ámbito: decisiones caras de cambiar después (capas, esquema DB, contratos API/WS) y roadmap del Motor Cuantitativo. Convenciones de naming y estrategia de testing se resuelven como guía ligera (ver `docs/conventions.md`, se escribe durante Etapa 1, no bloquea el inicio).
 
 ## 1. Arquitectura general
 
@@ -47,9 +47,9 @@ Principio: el dominio no conoce Massive/Polygon, HTTP, SQL, WebSocket ni NinjaTr
 | `Underlying` | Activo subyacente (ticker, exchange, tipo) | Tabla de referencia (PostgreSQL) |
 | `Expiration` | Fecha de vencimiento con DTE | Derivado de `OptionContract` |
 | `OptionContract` | Datos base del contrato (strike, tipo, bid/ask/last, volumen, OI) | Tabla de referencia + snapshot en serie temporal |
-| `Greeks` | MVP: Delta y Gamma. Theta/Vega se agregan según necesidad. Charm/Vanna/Vomma **pospuestos** — se agregan solo cuando el Gamma Engine (Etapa 7) los necesite para el modelo de Dealer Bias, no antes | Serie temporal, embebido en snapshot de `OptionContract` |
+| `Greeks` | MVP: Delta y Gamma. Theta/Vega se agregan según necesidad. Charm/Vanna/Vomma **pospuestos** — se agregan solo cuando el Gamma Engine los necesite para el modelo de Dealer Bias, no antes | Serie temporal, embebido en snapshot de `OptionContract` |
 | `FlowEvent` | Evento de flujo institucional (sweep/block, premium, dirección) | Tabla append-only (TimescaleDB) |
-| `GammaAggregate` | Estado agregado del mercado para un `Underlying` en un instante: Net Gamma, Gamma Flip, Call Wall, Put Wall, Dealer Position, Dealer Bias y demás métricas definidas por el proyecto. Es el resultado del Gamma Engine; **no** es un `OptionChain` | Serie temporal en `gamma_aggregates` — snapshot persistido en TimescaleDB (cadencia configurable, default aprox. 1 min) |
+| `GammaAggregate` | Estado agregado del mercado para un `Underlying` en un instante: Net Gamma, Gamma Flip, Absolute Gamma / Peak Gamma Strike, Call Wall, Put Wall, Max Pain, Dealer Gamma Notional y demás métricas definidas por el proyecto. Es el resultado agregado del Gamma Engine; **no** es un `OptionChain` | Serie temporal en `gamma_aggregates` — snapshot persistido en TimescaleDB (cadencia configurable, default aprox. 1 min) |
 
 ### Proyecciones (no persistidas — se construyen bajo demanda)
 
@@ -115,3 +115,75 @@ Ver `docs/nt8-contract.md`.
 ## 9. Decisiones tecnológicas
 
 Ver `docs/adr/` — ADR-001 a ADR-006.
+
+## 10. Roadmap oficial — Motor Cuantitativo
+
+Principios obligatorios para la secuencia de implementación:
+
+- **Un PR = una responsabilidad.**
+- **Primero arquitectura.**
+- **Después implementación.**
+- **Primero Fake determinístico.**
+- **Después implementación real.**
+
+Separación de Clean Architecture para el Motor Cuantitativo:
+
+```text
+Provider
+↓
+Application
+↓
+Domain
+↓
+Aggregation
+↓
+Persistence
+↓
+Streaming
+↓
+Frontend
+```
+
+### PR #8 — Greeks Engine
+
+- Definir el puerto `GreeksCalculator`.
+- Implementación `FakeGreeksCalculator` determinística.
+- `CalculateGreeksUseCase`.
+- Endpoint de validación.
+- Tests.
+
+### PR #9 — Gamma Exposure Engine
+
+- **Entrada:** `OptionChain` con `Greeks`.
+- **Salida:** `GammaExposure[]` por contrato.
+
+`GammaExposure[]` es un valor intermedio en memoria. No se persiste, no se almacena en base de datos y no utiliza `IStorage`. Su única finalidad es alimentar el proceso de agregación.
+
+### PR #10 — Gamma Aggregation
+
+- **Entrada:** `GammaExposure[]`.
+- **Salida:** `GammaAggregate`.
+
+`GammaAggregate` debe contener al menos:
+
+- Net Gamma.
+- Gamma Flip.
+- Absolute Gamma / Peak Gamma Strike.
+- Call Wall.
+- Put Wall.
+- Max Pain.
+- Dealer Gamma Notional.
+
+Nota: Absolute Gamma (Peak Gamma Strike) forma parte del agregado principal debido a su relevancia operacional para el análisis institucional.
+
+Nota: Max Pain se calcula y se expone como dato analítico, pero no constituye por sí mismo una señal principal para la lógica de alertas intradía.
+
+### PR #11 — Persistencia
+
+Únicamente `GammaAggregate` llega a `IStorage`. Nunca `GammaExposure[]`.
+
+### PR #12 — Background Jobs
+
+### PR #13 — WebSockets
+
+### PR #14 — Chart Engine

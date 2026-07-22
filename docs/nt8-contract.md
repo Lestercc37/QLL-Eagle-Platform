@@ -34,4 +34,4 @@ Durante la Etapa 4 del roadmap, el backend responde con datos del `MockDataProvi
 - La reconexión funciona si se reinicia el backend mientras NT8 sigue corriendo.
 - El manejo de `schema_version` funciona (se puede probar forzando una versión mayor desde el backend).
 
-Ningún dato mostrado en esta etapa es real — es deliberado, sirve para probar la integración antes de que exista el Gamma Engine real (Etapa 7).
+Ningún dato mostrado en esta etapa es real — es deliberado, sirve para probar la integración antes de que exista el Gamma Engine real.
