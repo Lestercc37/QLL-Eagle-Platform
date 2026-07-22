@@ -1,0 +1,16 @@
+[project]
+name = "qll-eagle-platform"
+version = "0.1.0"
+description = "QLL Eagle Platform backend"
+requires-python = ">=3.11"
+dependencies = ["alembic>=1.13"]
+
+[project.optional-dependencies]
+test = ["pytest>=8.0"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
