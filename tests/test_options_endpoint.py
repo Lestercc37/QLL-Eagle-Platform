@@ -61,3 +61,42 @@ def test_option_chain_request_schema_includes_valid_swagger_example() -> None:
     schema = response.json()["components"]["schemas"]["OptionChainRequest"]
     assert schema["example"]["symbol"] == "SPY"
     assert schema["example"]["contracts"][0]["occ_symbol"] == "SPY260220C00540000"
+
+
+def test_options_post_request_bodies_use_option_chain_request_schema() -> None:
+    with TestClient(app) as client:
+        response = client.get("/openapi.json")
+
+    assert response.status_code == 200
+    paths = response.json()["paths"]
+    for path in ("/options/greeks", "/options/gamma-exposure"):
+        request_body = paths[path]["post"]["requestBody"]["content"]["application/json"]
+        assert request_body["schema"]["$ref"].endswith("/OptionChainRequest")
+        assert request_body["examples"]["option_chain"]["value"]["symbol"] == "SPY"
+        assert "additionalProp1" not in str(request_body)
+
+
+def test_greeks_endpoint_rejects_domain_invalid_payload_with_422() -> None:
+    payload = {
+        "symbol": "SPY",
+        "as_of": "2026-01-15T14:30:00Z",
+        "contracts": [
+            {
+                "occ_symbol": "SPY260220C00540000",
+                "strike": 540,
+                "expiration": "2026-02-20",
+                "type": "call",
+                "bid": 1.25,
+                "ask": 1.2,
+                "iv": 0.18,
+                "open_interest": 8000,
+                "volume": 3400,
+            }
+        ],
+    }
+
+    with TestClient(app) as client:
+        response = client.post("/options/greeks", json=payload)
+
+    assert response.status_code == 422
+    assert response.status_code != 500
