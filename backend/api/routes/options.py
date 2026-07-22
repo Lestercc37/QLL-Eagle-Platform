@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 from datetime import date
-from typing import Any
-
 from fastapi import APIRouter, Request
 
+from backend.api.schemas import OptionChainRequest
 from backend.api.serializers import (
     chain_response,
     gamma_exposure_response,
@@ -28,9 +27,9 @@ def load_option_chain(
 
 
 @router.post("/options/greeks", summary="Calculate deterministic Greeks for an option chain")
-def calculate_greeks(payload: dict[str, Any], request: Request) -> dict[str, object]:
+def calculate_greeks(payload: OptionChainRequest, request: Request) -> dict[str, object]:
     container: Container = request.app.state.container
-    chain = option_chain_from_payload(payload)
+    chain = option_chain_from_payload(payload.to_payload())
     enriched_chain = container.calculate_greeks_use_case.execute(chain)
     return greeks_chain_response(enriched_chain)
 
@@ -39,8 +38,8 @@ def calculate_greeks(payload: dict[str, Any], request: Request) -> dict[str, obj
     "/options/gamma-exposure",
     summary="Calculate deterministic Gamma Exposure for an option chain",
 )
-def calculate_gamma_exposure(payload: dict[str, Any], request: Request) -> dict[str, object]:
+def calculate_gamma_exposure(payload: OptionChainRequest, request: Request) -> dict[str, object]:
     container: Container = request.app.state.container
-    chain = option_chain_from_payload(payload)
+    chain = option_chain_from_payload(payload.to_payload())
     gamma_exposures = container.calculate_gamma_exposure_use_case.execute(chain)
     return gamma_exposure_response(gamma_exposures)
