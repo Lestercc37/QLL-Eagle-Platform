@@ -187,6 +187,36 @@ class GammaAggregate:
 
 
 @dataclass(frozen=True, slots=True)
+class GammaExposure:
+    occ_symbol: str
+    strike: Decimal
+    contract_type: ContractType
+    expiration: date
+    gamma: Decimal
+    open_interest: int
+    dealer_gamma_exposure: Decimal
+    sign: Decimal
+
+    def __post_init__(self) -> None:
+        if not self.occ_symbol:
+            raise InvalidOptionError("occ_symbol is required")
+        _ensure_positive_decimal(self.strike, InvalidStrikeError, "strike")
+        if not isinstance(self.expiration, date):
+            raise InvalidExpirationError("expiration must be a date")
+        _ensure_finite_decimal(self.gamma, InvalidOptionError, "gamma")
+        _ensure_finite_decimal(
+            self.dealer_gamma_exposure,
+            InvalidOptionError,
+            "dealer_gamma_exposure",
+        )
+        _ensure_finite_decimal(self.sign, InvalidOptionError, "sign")
+        if self.open_interest < 0:
+            raise InvalidOptionError("open_interest cannot be negative")
+        if self.sign not in (Decimal("-1"), Decimal("1")):
+            raise InvalidOptionError("sign must be +1 or -1")
+
+
+@dataclass(frozen=True, slots=True)
 class MarketPrice:
     symbol: str
     as_of: datetime
