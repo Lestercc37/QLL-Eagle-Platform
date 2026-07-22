@@ -1,11 +1,11 @@
-from backend.domain.models import Greeks, MarketSnapshot, OptionContract
+from backend.domain.models import OptionChain
 
 
 class InternalGreeksCalculator:
     """Internal Greeks calculator scaffold.
 
-    Real Greeks calculation with py_vollib/QuantLib is intentionally deferred.
+    Real Greeks calculation with Black-Scholes/QuantLib is intentionally deferred.
     """
 
-    def calculate(self, contract: OptionContract, market: MarketSnapshot) -> Greeks:
+    def calculate(self, chain: OptionChain) -> OptionChain:
         raise NotImplementedError
