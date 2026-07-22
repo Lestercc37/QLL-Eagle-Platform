@@ -1,0 +1,117 @@
+# QLL — Arquitectura (Etapa 0)
+
+Estado: aprobado para inicio de implementación
+Ámbito: decisiones caras de cambiar después (capas, esquema DB, contratos API/WS). Convenciones de naming y estrategia de testing se resuelven como guía ligera (ver `docs/conventions.md`, se escribe durante Etapa 1, no bloquea el inicio).
+
+## 1. Arquitectura general
+
+QLL usa **Arquitectura Hexagonal (Ports & Adapters)**. El núcleo de negocio (dominio + motores de cálculo) no conoce la existencia de Polygon/Massive, PostgreSQL, React ni NinjaTrader. Todo lo externo entra y sale a través de interfaces (ports) definidas por el núcleo, implementadas por adaptadores reemplazables.
+
+```
+                        ┌─────────────────────────────┐
+                        │        Adaptadores In        │
+                        │  REST API │ WebSocket Server  │
+                        └──────────────┬────────────────┘
+                                       │
+        ┌──────────────────────────────▼──────────────────────────────┐
+        │                        NÚCLEO (dominio)                      │
+        │                                                              │
+        │   Entidades: Underlying, OptionContract, OptionChain,        │
+        │   Expiration, Greeks, GammaExposure, DealerPosition,         │
+        │   FlowEvent, MarketSnapshot, PriceLevel                      │
+        │                                                              │
+        │   Motores: OptionsEngine, GammaEngine, FlowEngine            │
+        │                                                              │
+        │   Ports (interfaces): IDataProvider, IGreeksCalculator,      │
+        │   IStorage, INotificationService                             │
+        └──────────────┬───────────────────────────────┬───────────────┘
+                       │                                │
+        ┌──────────────▼──────────────┐   ┌─────────────▼─────────────┐
+        │      Adaptadores Out         │   │     Adaptadores Out        │
+        │  PolygonProvider (IDataProvider) │  TimescaleStorage (IStorage) │
+        │  ORATSProvider (IDataProvider)   │  ORATSGreeksCalc (IGreeksCalc)│
+        │  MockProvider (IDataProvider)    │                              │
+        └───────────────────────────────┘   └────────────────────────────┘
+```
+
+Regla de dependencia: las flechas de importación siempre apuntan **hacia el núcleo**. Un adaptador puede importar del dominio; el dominio nunca importa de un adaptador. Ver ADR-001.
+
+## 2. Modelo de dominio (v1.1)
+
+Principio: el dominio no conoce Massive/Polygon, HTTP, SQL, WebSocket ni NinjaTrader. Las **entidades** representan el negocio; las **proyecciones** son vistas de lectura para clientes (Web UI, NT8) y no se persisten como tal — se construyen combinando entidades.
+
+### Entidades (persistidas)
+
+| Entidad | Descripción | Persistencia |
+|---|---|---|
+| `Underlying` | Activo subyacente (ticker, exchange, tipo) | Tabla de referencia (PostgreSQL) |
+| `Expiration` | Fecha de vencimiento con DTE | Derivado de `OptionContract` |
+| `OptionContract` | Datos base del contrato (strike, tipo, bid/ask/last, volumen, OI) | Tabla de referencia + snapshot en serie temporal |
+| `Greeks` | MVP: Delta y Gamma. Theta/Vega se agregan según necesidad. Charm/Vanna/Vomma **pospuestos** — se agregan solo cuando el Gamma Engine (Etapa 7) los necesite para el modelo de Dealer Bias, no antes | Serie temporal, embebido en snapshot de `OptionContract` |
+| `FlowEvent` | Evento de flujo institucional (sweep/block, premium, dirección) | Tabla append-only (TimescaleDB) |
+| `GammaAggregate` | Gamma Flip, Call Wall, Put Wall, Net Gamma, Dealer Gamma — a nivel de `Underlying`, no por contrato | Serie temporal — snapshot persistido (cadencia configurable, default 1 min) |
+
+### Proyecciones (no persistidas — se construyen bajo demanda)
+
+- **`MarketSnapshot`** — combina precio (frecuencia alta, barato) + `GammaAggregate` (frecuencia baja, costoso) + Flow reciente. Es lo que entrega la API, no una tabla propia.
+- **Contribución/Ranking por contrato** (qué tanto aporta cada `OptionContract` al Gamma total) — se calcula on-demand desde el `OptionChain` ya guardado, nunca se persiste por contrato (evita multiplicar la tabla de series temporales por el número de contratos en cada snapshot).
+- **`dealer_position`** (`long_gamma` / `short_gamma`) — derivado como el signo de `Net Gamma` dentro de `GammaAggregate`, no es un campo propio persistido.
+- Vistas de Dashboard / NT8 — composiciones de lo anterior, específicas de cada cliente.
+
+### Casos de uso del dominio
+
+`GetOptionChain`, `CalculateGammaExposure`, `CalculateGammaFlip`, `CalculateCallPutWall`, `BuildMarketSnapshot`, `ProcessFlow` — especificados en detalle, incluyendo qué dispara cada uno y su mapeo a REST/WebSocket, en `docs/use-cases.md`.
+
+## 3. Interfaces (Ports)
+
+Definidas en `backend/domain/ports/`. Son las únicas puertas de entrada/salida del núcleo.
+
+```python
+class IDataProvider(Protocol):
+    def get_option_chain(self, underlying: str, expiration: date | None = None) -> OptionChain: ...
+    def get_underlying_snapshot(self, underlying: str) -> MarketSnapshot: ...
+    def stream_trades(self, underlying: str) -> AsyncIterator[FlowEvent]: ...
+
+class IGreeksCalculator(Protocol):
+    def calculate(self, contract: OptionContract, market: MarketSnapshot) -> Greeks: ...
+
+class IStorage(Protocol):
+    def save_chain_snapshot(self, chain: OptionChain) -> None: ...
+    def save_gamma_snapshot(self, gamma: GammaExposure) -> None: ...
+    def get_gamma_history(self, underlying: str, start: datetime, end: datetime) -> list[GammaExposure]: ...
+    # ... resto de operaciones de persistencia
+
+class INotificationService(Protocol):
+    def notify(self, event: FlowEvent | GammaExposure) -> None: ...
+    # implementación inicial: no-op. Con Alerts (Etapa 8+), se agrega un adaptador real.
+```
+
+Regla (ADR-006): **ningún módulo del núcleo o de otro adaptador llama directamente a `polygon.*`, `massive.*`, `orats.*` ni a un cliente HTTP de un proveedor.** Siempre pasa por `provider.get_option_chain(...)`, nunca por el SDK del proveedor importado fuera de su propio adaptador.
+
+## 4. Adaptadores externos (implementaciones iniciales)
+
+- `MockDataProvider` — implementa `IDataProvider` con datos simulados o registrados (fixtures). Es el que se usa mientras no haya feed contratado. Vive en `backend/adapters/providers/mock/`.
+- `PolygonDataProvider` (Massive) — implementación real, se agrega cuando se contrate el plan. Mismo contrato `IDataProvider`, sin tocar el núcleo.
+- `TimescaleStorage` — implementa `IStorage` sobre PostgreSQL + TimescaleDB.
+- `InternalGreeksCalculator` — implementa `IGreeksCalculator` con `py_vollib`/`QuantLib`. Alternativa futura: `ORATSGreeksCalculator` si se decide no calcular in-house.
+- `NoopNotificationService` — implementación inicial de `INotificationService`, no hace nada. Se reemplaza en Etapa 8+.
+
+## 5. Esquema de base de datos
+
+Ver `docs/database-schema.md`.
+
+## 6. API REST
+
+Ver `docs/api-contract.md`.
+
+## 7. WebSocket
+
+Ver `docs/websocket-contract.md`.
+
+## 8. Contrato NT8
+
+Ver `docs/nt8-contract.md`.
+
+## 9. Decisiones tecnológicas
+
+Ver `docs/adr/` — ADR-001 a ADR-006.
