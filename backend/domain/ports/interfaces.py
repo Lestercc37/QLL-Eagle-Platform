@@ -6,6 +6,7 @@ from typing import AsyncIterator, Protocol
 from backend.domain.models import (
     FlowEvent,
     GammaAggregate,
+    GammaExposure,
     MarketPrice,
     MarketSnapshot,
     OptionChain,
@@ -21,6 +22,10 @@ class IDataProvider(Protocol):
 
 class IGreeksCalculator(Protocol):
     def calculate(self, chain: OptionChain) -> OptionChain: ...
+
+
+class IGammaExposureCalculator(Protocol):
+    def calculate(self, chain: OptionChain) -> tuple[GammaExposure, ...]: ...
 
 
 class IStorage(Protocol):

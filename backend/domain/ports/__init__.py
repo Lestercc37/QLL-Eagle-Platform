@@ -1,5 +1,6 @@
 from backend.domain.ports.interfaces import (
     IDataProvider,
+    IGammaExposureCalculator,
     IGreeksCalculator,
     INotificationService,
     IStorage,
@@ -10,6 +11,7 @@ from backend.domain.ports.interfaces import (
 
 __all__ = [
     "IDataProvider",
+    "IGammaExposureCalculator",
     "IGreeksCalculator",
     "INotificationService",
     "IStorage",

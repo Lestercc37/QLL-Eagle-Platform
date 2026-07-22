@@ -8,6 +8,7 @@ from backend.domain.models import (
     ContractType,
     FlowEvent,
     GammaAggregate,
+    GammaExposure,
     Greeks,
     MarketSnapshot,
     OptionChain,
@@ -42,6 +43,25 @@ def greeks_chain_response(chain: OptionChain) -> dict[str, Any]:
             _num(contract.greeks.vega) if contract.greeks.vega is not None else None
         )
     return payload
+
+
+def gamma_exposure_response(items: tuple[GammaExposure, ...]) -> dict[str, Any]:
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "items": [
+            {
+                "occ_symbol": item.occ_symbol,
+                "strike": _num(item.strike),
+                "contract_type": item.contract_type.value,
+                "expiration": item.expiration.isoformat(),
+                "gamma": _num(item.gamma),
+                "open_interest": item.open_interest,
+                "dealer_gamma_exposure": _num(item.dealer_gamma_exposure),
+                "sign": _num(item.sign),
+            }
+            for item in items
+        ],
+    }
 
 
 def option_chain_from_payload(payload: dict[str, Any]) -> OptionChain:
