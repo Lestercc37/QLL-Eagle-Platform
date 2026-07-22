@@ -1,19 +1,58 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Any
 
-from backend.domain.models import FlowEvent, GammaAggregate, MarketSnapshot, OptionChain, SCHEMA_VERSION, Underlying
+from backend.domain.models import (
+    ContractType,
+    FlowEvent,
+    GammaAggregate,
+    Greeks,
+    MarketSnapshot,
+    OptionChain,
+    OptionContract,
+    SCHEMA_VERSION,
+    Underlying,
+)
 from backend.domain.use_cases.errors import QllError
 
 
 def underlyings_response(items: list[Underlying]) -> dict[str, Any]:
-    return {"schema_version": SCHEMA_VERSION, "underlyings": [{"symbol": i.symbol, "kind": i.kind.value, "is_priority": i.is_priority} for i in items]}
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "underlyings": [
+            {"symbol": i.symbol, "kind": i.kind.value, "is_priority": i.is_priority}
+            for i in items
+        ],
+    }
 
 
 def chain_response(chain: OptionChain) -> dict[str, Any]:
     return {"schema_version": SCHEMA_VERSION, "symbol": chain.symbol, "as_of": _dt(chain.as_of), "contracts": [{"occ_symbol": c.occ_symbol, "strike": _num(c.strike), "type": c.contract_type.value, "bid": _num(c.bid), "ask": _num(c.ask), "iv": _num(c.iv), "delta": _num(c.greeks.delta), "gamma": _num(c.greeks.gamma), "open_interest": c.open_interest, "volume": c.volume} for c in chain.contracts]}
+
+
+def greeks_chain_response(chain: OptionChain) -> dict[str, Any]:
+    payload = chain_response(chain)
+    for contract_payload, contract in zip(payload["contracts"], chain.contracts, strict=True):
+        contract_payload["theta"] = (
+            _num(contract.greeks.theta) if contract.greeks.theta is not None else None
+        )
+        contract_payload["vega"] = (
+            _num(contract.greeks.vega) if contract.greeks.vega is not None else None
+        )
+    return payload
+
+
+def option_chain_from_payload(payload: dict[str, Any]) -> OptionChain:
+    return OptionChain(
+        symbol=str(payload["symbol"]),
+        as_of=_parse_datetime(str(payload["as_of"])),
+        contracts=tuple(
+            _contract_from_payload(str(payload["symbol"]), item)
+            for item in payload.get("contracts", ())
+        ),
+    )
 
 
 def gamma_response(gamma: GammaAggregate) -> dict[str, Any]:
@@ -38,6 +77,40 @@ def websocket_message(channel: str, symbol: str, payload: dict[str, Any], as_of:
 
 def error_response(error: QllError) -> dict[str, Any]:
     return {"schema_version": SCHEMA_VERSION, "error": {"code": error.code, "message": str(error)}}
+
+
+def _contract_from_payload(default_symbol: str, payload: dict[str, Any]) -> OptionContract:
+    contract_type = ContractType(str(payload.get("type") or payload.get("contract_type")))
+    greeks_payload = payload.get("greeks", payload)
+    return OptionContract(
+        underlying=str(payload.get("underlying", default_symbol)),
+        strike=Decimal(str(payload["strike"])),
+        expiration=date.fromisoformat(str(payload["expiration"])),
+        contract_type=contract_type,
+        occ_symbol=str(payload["occ_symbol"]),
+        bid=Decimal(str(payload["bid"])),
+        ask=Decimal(str(payload["ask"])),
+        last=Decimal(str(payload.get("last", payload["bid"]))),
+        volume=int(payload["volume"]),
+        open_interest=int(payload["open_interest"]),
+        iv=Decimal(str(payload["iv"])),
+        greeks=Greeks(
+            delta=Decimal(str(greeks_payload.get("delta", "0"))),
+            gamma=Decimal(str(greeks_payload.get("gamma", "0"))),
+            theta=_optional_decimal(greeks_payload.get("theta")),
+            vega=_optional_decimal(greeks_payload.get("vega")),
+        ),
+    )
+
+
+def _optional_decimal(value: Any) -> Decimal | None:
+    if value is None:
+        return None
+    return Decimal(str(value))
+
+
+def _parse_datetime(value: str) -> datetime:
+    return datetime.fromisoformat(value.replace("Z", "+00:00"))
 
 
 def _dt(value: datetime) -> str:
