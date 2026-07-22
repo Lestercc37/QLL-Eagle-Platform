@@ -24,7 +24,7 @@ Respuesta (resumen):
 ```
 
 ## `GET /api/v1/gamma/{symbol}`
-Último snapshot de Gamma Exposure.
+Último `GammaAggregate` persistido para el símbolo.
 
 Respuesta (resumen):
 ```json
@@ -40,10 +40,10 @@ Respuesta (resumen):
   "dealer_position": "short_gamma"
 }
 ```
-`dealer_position` es un campo **derivado** (signo de `net_gamma`), calculado al construir la respuesta — no existe como columna en la base de datos (ver `docs/database-schema.md`, tabla `gamma_aggregates`).
+`dealer_position` es una métrica **derivada** de `GammaAggregate` a partir del signo de `net_gamma`; no existe como columna independiente en la base de datos (ver `docs/database-schema.md`, tabla `gamma_aggregates`).
 
 ## `GET /api/v1/gamma/{symbol}/history`
-Serie histórica de Gamma Exposure. Query params: `start`, `end`.
+Serie histórica de `GammaAggregate`. Query params: `start`, `end`.
 
 ## `GET /api/v1/flow/{symbol}`
 Últimos eventos de flujo clasificados (sweeps/blocks). Query params: `since`, `limit`.

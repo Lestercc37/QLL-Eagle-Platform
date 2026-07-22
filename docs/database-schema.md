@@ -45,7 +45,7 @@ Charm/Vanna/Vomma: no tienen columna todavía — se agregan solo cuando el Gamm
 Índice compuesto: `(contract_id, time DESC)`.
 
 ### `gamma_aggregates`
-Corresponde a la entidad `GammaAggregate` (Domain Model v1.1) — nivel `Underlying`, no por contrato.
+Tabla oficial para el histórico de la entidad de dominio `GammaAggregate` (Domain Model v1.1) — estado agregado a nivel `Underlying`, no por contrato y no equivalente a un `OptionChain`.
 
 | Columna | Tipo | Notas |
 |---|---|---|
@@ -58,11 +58,13 @@ Corresponde a la entidad `GammaAggregate` (Domain Model v1.1) — nivel `Underly
 | net_gamma | numeric | |
 | dealer_gamma_notional | numeric | |
 
-`dealer_position` (`long_gamma`/`short_gamma`) **no es columna** — se deriva del signo de `net_gamma` en el dominio (`dealer_position(net_gamma) -> str`), tanto en la API como en cualquier consumidor.
+`dealer_position` (`long_gamma`/`short_gamma`) **no es columna** — es una métrica derivada dentro de `GammaAggregate` a partir del signo de `net_gamma`, tanto en la API como en cualquier consumidor. `dealer_bias` y demás métricas agregadas se agregan a esta tabla solo cuando el modelo oficial del Gamma Engine las defina.
 
 Índice compuesto: `(underlying_id, time DESC)`.
 
 ### `market_snapshots`
+Esta tabla física almacena datos básicos de mercado del subyacente (precio, volumen u otros campos simples que se agreguen después). **No equivale** al objeto de dominio `MarketSnapshot`: ese objeto es una proyección construida bajo demanda combinando último `GammaAggregate`, precio actual y flow reciente.
+
 | Columna | Tipo | Notas |
 |---|---|---|
 | time | timestamptz | partición TimescaleDB |

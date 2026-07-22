@@ -17,8 +17,8 @@ QLL usa **Arquitectura Hexagonal (Ports & Adapters)**. El núcleo de negocio (do
         │                        NÚCLEO (dominio)                      │
         │                                                              │
         │   Entidades: Underlying, OptionContract, OptionChain,        │
-        │   Expiration, Greeks, GammaExposure, DealerPosition,         │
-        │   FlowEvent, MarketSnapshot, PriceLevel                      │
+        │   Expiration, Greeks, GammaAggregate, FlowEvent              │
+        │   Proyecciones: MarketSnapshot                               │
         │                                                              │
         │   Motores: OptionsEngine, GammaEngine, FlowEngine            │
         │                                                              │
@@ -49,18 +49,18 @@ Principio: el dominio no conoce Massive/Polygon, HTTP, SQL, WebSocket ni NinjaTr
 | `OptionContract` | Datos base del contrato (strike, tipo, bid/ask/last, volumen, OI) | Tabla de referencia + snapshot en serie temporal |
 | `Greeks` | MVP: Delta y Gamma. Theta/Vega se agregan según necesidad. Charm/Vanna/Vomma **pospuestos** — se agregan solo cuando el Gamma Engine (Etapa 7) los necesite para el modelo de Dealer Bias, no antes | Serie temporal, embebido en snapshot de `OptionContract` |
 | `FlowEvent` | Evento de flujo institucional (sweep/block, premium, dirección) | Tabla append-only (TimescaleDB) |
-| `GammaAggregate` | Gamma Flip, Call Wall, Put Wall, Net Gamma, Dealer Gamma — a nivel de `Underlying`, no por contrato | Serie temporal — snapshot persistido (cadencia configurable, default 1 min) |
+| `GammaAggregate` | Estado agregado del mercado para un `Underlying` en un instante: Net Gamma, Gamma Flip, Call Wall, Put Wall, Dealer Position, Dealer Bias y demás métricas definidas por el proyecto. Es el resultado del Gamma Engine; **no** es un `OptionChain` | Serie temporal en `gamma_aggregates` — snapshot persistido en TimescaleDB (cadencia configurable, default aprox. 1 min) |
 
 ### Proyecciones (no persistidas — se construyen bajo demanda)
 
-- **`MarketSnapshot`** — combina precio (frecuencia alta, barato) + `GammaAggregate` (frecuencia baja, costoso) + Flow reciente. Es lo que entrega la API, no una tabla propia.
+- **`MarketSnapshot`** — combina precio actual (frecuencia alta, barato) + último `GammaAggregate` (frecuencia baja, costoso) + Flow reciente. Es una proyección de dominio construida bajo demanda para API/WS; no representa una tabla de persistencia del estado completo del mercado.
 - **Contribución/Ranking por contrato** (qué tanto aporta cada `OptionContract` al Gamma total) — se calcula on-demand desde el `OptionChain` ya guardado, nunca se persiste por contrato (evita multiplicar la tabla de series temporales por el número de contratos en cada snapshot).
-- **`dealer_position`** (`long_gamma` / `short_gamma`) — derivado como el signo de `Net Gamma` dentro de `GammaAggregate`, no es un campo propio persistido.
+- **`dealer_position`** (`long_gamma` / `short_gamma`) — métrica derivada dentro de `GammaAggregate` a partir de `Net Gamma`; no es una columna propia persistida.
 - Vistas de Dashboard / NT8 — composiciones de lo anterior, específicas de cada cliente.
 
 ### Casos de uso del dominio
 
-`GetOptionChain`, `CalculateGammaExposure`, `CalculateGammaFlip`, `CalculateCallPutWall`, `BuildMarketSnapshot`, `ProcessFlow` — especificados en detalle, incluyendo qué dispara cada uno y su mapeo a REST/WebSocket, en `docs/use-cases.md`.
+`GetOptionChain`, `CalculateGammaAggregate`, `CalculateGammaFlip`, `CalculateCallPutWall`, `BuildMarketSnapshot`, `ProcessFlow` — especificados en detalle, incluyendo qué dispara cada uno y su mapeo a REST/WebSocket, en `docs/use-cases.md`.
 
 ## 3. Interfaces (Ports)
 
@@ -77,12 +77,12 @@ class IGreeksCalculator(Protocol):
 
 class IStorage(Protocol):
     def save_chain_snapshot(self, chain: OptionChain) -> None: ...
-    def save_gamma_snapshot(self, gamma: GammaExposure) -> None: ...
-    def get_gamma_history(self, underlying: str, start: datetime, end: datetime) -> list[GammaExposure]: ...
+    def save_gamma_aggregate(self, gamma: GammaAggregate) -> None: ...
+    def get_gamma_history(self, underlying: str, start: datetime, end: datetime) -> list[GammaAggregate]: ...
     # ... resto de operaciones de persistencia
 
 class INotificationService(Protocol):
-    def notify(self, event: FlowEvent | GammaExposure) -> None: ...
+    def notify(self, event: FlowEvent | GammaAggregate) -> None: ...
     # implementación inicial: no-op. Con Alerts (Etapa 8+), se agrega un adaptador real.
 ```
 

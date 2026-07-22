@@ -3,14 +3,14 @@
 **Estado**: Aceptado
 
 ## Contexto
-QLL necesita persistir tanto datos de referencia (underlyings, contratos) como series temporales de alto volumen (snapshots de chain, Gamma Exposure, eventos de flujo). Se evaluó usar una base de series temporales dedicada (ClickHouse, InfluxDB) separada de la base relacional.
+QLL necesita persistir tanto datos de referencia (underlyings, contratos) como series temporales de alto volumen (snapshots de chain, históricos de `GammaAggregate`, eventos de flujo). Se evaluó usar una base de series temporales dedicada (ClickHouse, InfluxDB) separada de la base relacional.
 
 ## Alternativas consideradas
 - **InfluxDB / ClickHouse dedicada + PostgreSQL separado**: mejor rendimiento en escritura masiva a muy gran escala, pero dos motores de base de datos que mantener, dos conexiones, dos esquemas de backup — complejidad operativa alta para un proyecto de uso personal.
 - **PostgreSQL + extensión TimescaleDB**: un solo motor, un solo esquema de conexión, hypertables para las tablas de series temporales con rendimiento adecuado al volumen de un usuario individual (no es un ticker plant institucional).
 
 ## Decisión
-PostgreSQL con extensión TimescaleDB. Tablas de referencia como tablas normales; tablas de snapshots (`option_chain_snapshots`, `gamma_exposure_snapshots`, `market_snapshots`, `flow_events`) como hypertables.
+PostgreSQL con extensión TimescaleDB. Tablas de referencia como tablas normales; tablas de series temporales (`option_chain_snapshots`, `gamma_aggregates`, `market_snapshots`, `flow_events`) como hypertables. `gamma_aggregates` es la tabla oficial para persistir el histórico de `GammaAggregate`; `market_snapshots` solo almacena datos básicos de mercado y no equivale al objeto de dominio `MarketSnapshot`.
 
 ## Consecuencias
 - Un solo motor de base de datos que operar y respaldar, corre bien en Docker local sobre Windows.

@@ -17,11 +17,11 @@ Se dividen en dos categorías según qué los dispara:
 - **Salida**: `OptionChain` (lista de `OptionContract` con `Greeks` embebidos).
 - **Nota**: este es el único caso de uso "orientado a cliente" que puede tocar `IDataProvider` directamente (on-demand fetch), porque el chain crudo es la entrada de todo lo demás. El resto de casos de uso de cliente solo leen de `IStorage`.
 
-### `GetGammaExposure(underlying)`
+### `GetGammaAggregate(underlying)`
 - **Disparador**: `GET /api/v1/gamma/{symbol}` y canal WebSocket `gamma`.
 - **Ports usados**: `IStorage.get_latest_gamma_aggregate(...)`.
-- **Salida**: `GammaAggregate` + `dealer_position` derivado (signo de `net_gamma`, ver `docs/database-schema.md`).
-- **No calcula nada** — solo lee el último `GammaAggregate` que el caso de uso interno `CalculateGammaExposure` ya persistió.
+- **Salida**: `GammaAggregate` con `dealer_position` derivado (signo de `net_gamma`, ver `docs/database-schema.md`).
+- **No calcula nada** — solo lee el último `GammaAggregate` que el caso de uso interno `CalculateGammaAggregate` ya persistió.
 
 ### `GetGammaHistory(underlying, start, end)`
 - **Disparador**: `GET /api/v1/gamma/{symbol}/history`
@@ -43,9 +43,9 @@ Se dividen en dos categorías según qué los dispara:
 
 ## Internos del motor (no tienen endpoint propio)
 
-### `CalculateGammaExposure(underlying)`
+### `CalculateGammaAggregate(underlying)`
 - **Disparador**: scheduler, cadencia configurable (default 1 min — ver `docs/architecture.md` sección 2).
-- **Ports usados**: `IStorage.get_latest_chain_snapshot(...)` (lee el chain ya persistido, no vuelve a golpear al proveedor) → calcula Gamma Flip, Call Wall, Put Wall, Net Gamma, Dealer Gamma → `IStorage.save_gamma_aggregate(...)`.
+- **Ports usados**: `IStorage.get_latest_chain_snapshot(...)` (lee el chain ya persistido, no vuelve a golpear al proveedor) → calcula Net Gamma, Gamma Flip, Call Wall, Put Wall, Dealer Position, Dealer Bias y demás métricas definidas por el proyecto → `IStorage.save_gamma_aggregate(...)`.
 - **Incluye como sub-pasos** (no casos de uso separados con endpoint propio): `CalculateGammaFlip`, `CalculateCallPutWall` — son funciones internas del motor de cálculo, invocadas por este caso de uso, no expuestas individualmente.
 - **Efecto secundario**: si el resultado cruza un umbral relevante (ej. cambio de `dealer_position`), llama a `INotificationService.notify(...)` — no-op hasta Etapa 8+.
 
@@ -61,11 +61,11 @@ Se dividen en dos categorías según qué los dispara:
 | Caso de uso | REST | WebSocket |
 |---|---|---|
 | `GetOptionChain` | `GET /api/v1/chain/{symbol}` | canal `chain` |
-| `GetGammaExposure` | `GET /api/v1/gamma/{symbol}` | canal `gamma` |
+| `GetGammaAggregate` | `GET /api/v1/gamma/{symbol}` | canal `gamma` |
 | `GetGammaHistory` | `GET /api/v1/gamma/{symbol}/history` | — (histórico no se transmite por streaming) |
 | `GetFlow` | `GET /api/v1/flow/{symbol}` | canal `flow` |
 | `BuildMarketSnapshot` | `GET /api/v1/market/{symbol}` | canal `market` |
-| `CalculateGammaExposure` | — (interno) | — |
+| `CalculateGammaAggregate` | — (interno) | — |
 | `ProcessFlow` | — (interno) | — |
 
 Ningún caso de uso interno tiene endpoint propio — confirma la regla del principio de esta sección: el cliente consulta, nunca dispara cálculo.
