@@ -4,7 +4,7 @@
 
 NinjaTrader nunca es el centro del sistema — es un cliente más, igual que el dashboard web. El indicador NinjaScript:
 
-- **No calcula** Gamma, Max Pain, Dealer Position, Greeks ni ninguna lógica de negocio.
+- **No calcula** Gamma, Max Pain, Dealer Position, Dealer Bias, Greeks ni ninguna lógica de negocio.
 - Solo consulta la API (REST para datos puntuales, WebSocket para streaming) y **dibuja** el resultado.
 - Toda la lógica vive una sola vez en el backend de QLL.
 

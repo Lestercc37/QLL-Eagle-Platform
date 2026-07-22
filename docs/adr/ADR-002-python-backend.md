@@ -3,7 +3,7 @@
 **Estado**: Aceptado
 
 ## Contexto
-El backend debe implementar cálculo de Greeks (Black-Scholes y variantes) y Gamma Exposure — matemática financiera no trivial. También debe exponer una API REST/WebSocket consumida por un frontend React y por un indicador NinjaScript (.NET/C#).
+El backend debe implementar cálculo de Greeks (Black-Scholes y variantes) y `GammaAggregate` — matemática financiera no trivial. También debe exponer una API REST/WebSocket consumida por un frontend React y por un indicador NinjaScript (.NET/C#).
 
 ## Alternativas consideradas
 - **Node.js/TypeScript**: mismo lenguaje que el frontend, reduce el número de lenguajes en el proyecto. Ecosistema de cálculo cuantitativo más limitado.

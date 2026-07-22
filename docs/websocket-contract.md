@@ -12,7 +12,7 @@ Canales disponibles: `gamma`, `chain`, `flow`, `market`.
 
 ## Mensajes (servidor → cliente)
 
-Mismo shape que los recursos REST equivalentes, envueltos con `channel` y `type`:
+Mismo shape que los recursos REST equivalentes, envueltos con `channel` y `type`. El canal `gamma` transmite el último `GammaAggregate` del símbolo:
 
 ```json
 {
