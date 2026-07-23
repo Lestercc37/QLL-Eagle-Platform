@@ -94,6 +94,23 @@ def test_dealer_positioning_endpoint_returns_response_model() -> None:
     }
 
 
+def test_dealer_positioning_openapi_example_returns_ok() -> None:
+    from fastapi.testclient import TestClient
+
+    from backend.main import app
+
+    with TestClient(app) as client:
+        openapi_response = client.get("/openapi.json")
+        openapi_response.raise_for_status()
+        schemas = openapi_response.json()["components"]["schemas"]
+        example = schemas["DealerPositioningRequest"]["example"]
+
+        response = client.post("/options/dealer-positioning", json=example)
+
+    assert example["gamma_flip"]["gamma_flip_price"] > 0
+    assert response.status_code == 200
+
+
 def _input(net_gamma: Decimal) -> DealerPositioningInput:
     return DealerPositioningInput(
         gamma_exposure=(

@@ -215,7 +215,7 @@ class DealerPositioningGammaExposureItemRequest(GammaExposureItemResponse):
 
 
 class DealerPositioningGammaFlipRequest(BaseModel):
-    gamma_flip_price: Number | None = None
+    gamma_flip_price: Number | None = Field(default=None, gt=0, examples=[535])
     lower_strike: Number | None = None
     upper_strike: Number | None = None
     lower_gamma: Number | None = None
@@ -248,6 +248,75 @@ class DealerPositioningMaxPainRequest(MaxPainResponse):
 
 
 class DealerPositioningRequest(BaseModel):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "symbol": "SPY",
+                "as_of": "2026-01-15T14:30:00Z",
+                "gamma_exposure": [
+                    {
+                        "occ_symbol": "SPY260220C00540000",
+                        "strike": 540,
+                        "contract_type": "call",
+                        "expiration": "2026-02-20",
+                        "gamma": 0.03,
+                        "open_interest": 8000,
+                        "dealer_gamma_exposure": 90,
+                        "sign": 1,
+                    }
+                ],
+                "gamma_aggregate": {
+                    "symbol": "SPY",
+                    "as_of": "2026-01-15T14:30:00Z",
+                    "items": [
+                        {
+                            "strike": 540,
+                            "total_gamma_exposure": 100,
+                            "call_gamma_exposure": 100,
+                            "put_gamma_exposure": 0,
+                            "net_gamma": 90,
+                            "contract_count": 1,
+                            "absolute_gamma": 100,
+                        }
+                    ],
+                },
+                "gamma_flip": {
+                    "gamma_flip_price": 535,
+                    "lower_strike": 530,
+                    "upper_strike": 540,
+                    "lower_gamma": -10,
+                    "upper_gamma": 90,
+                    "interpolation_ratio": 0.1,
+                    "flip_found": True,
+                },
+                "call_wall": {
+                    "strike": 545,
+                    "gamma": 200,
+                    "open_interest": 6000,
+                    "volume": 4200,
+                    "confidence_score": 0.8,
+                },
+                "put_wall": {
+                    "strike": 530,
+                    "gamma": -100,
+                    "open_interest": 5000,
+                    "volume": 3600,
+                    "confidence_score": 0.4,
+                },
+                "max_pain": {
+                    "schema_version": 1,
+                    "symbol": "SPY",
+                    "as_of": "2026-01-15T14:30:00Z",
+                    "max_pain_strike": 540,
+                    "total_call_pain": 1000,
+                    "total_put_pain": 900,
+                    "total_pain": 1900,
+                    "ranking": [],
+                },
+            }
+        }
+    )
+
     symbol: str = Field(min_length=1, examples=["SPY"])
     as_of: datetime = Field(examples=["2026-01-15T14:30:00Z"])
     gamma_exposure: list[DealerPositioningGammaExposureItemRequest] = Field(min_length=1)
