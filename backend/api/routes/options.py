@@ -66,6 +66,18 @@ def load_option_chain(
 
 @router.post("/options/greeks", summary="Calculate deterministic Greeks for an option chain")
 def calculate_greeks(payload: OptionChainBody, request: Request) -> dict[str, object]:
+    print(
+        "calculate_greeks runtime evidence:",
+        {
+            "__file__": __file__,
+            "co_firstlineno": calculate_greeks.__code__.co_firstlineno,
+            "payload_type": type(payload),
+            "option_chain_from_payload_exists": "option_chain_from_payload" in globals(),
+            "calculate_greeks_calls_option_chain_from_payload": "option_chain_from_payload"
+            in calculate_greeks.__code__.co_names,
+        },
+        flush=True,
+    )
     container: Container = request.app.state.container
     chain = _chain_from_request(payload)
     enriched_chain = container.calculate_greeks_use_case.execute(chain)
