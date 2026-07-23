@@ -70,6 +70,21 @@ class GammaExposureResponse(BaseModel):
     items: list[GammaExposureItemResponse]
 
 
+class GammaAggregateStrikeResponse(BaseModel):
+    strike: Number = Field(examples=[540])
+    gamma: Number = Field(examples=[90])
+    cumulative_gamma: Number = Field(examples=[90])
+    contract_count: int = Field(examples=[2])
+
+
+class GammaAggregateResponse(BaseModel):
+    schema_version: int = Field(examples=[1])
+    symbol: str = Field(examples=["SPY"])
+    as_of: str = Field(examples=["2026-01-15T14:30:00Z"])
+    total_gamma: Number = Field(examples=[90])
+    strikes: list[GammaAggregateStrikeResponse]
+
+
 class OptionContractRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 

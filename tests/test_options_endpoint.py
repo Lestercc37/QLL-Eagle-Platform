@@ -53,6 +53,14 @@ def test_gamma_exposure_endpoint_rejects_missing_option_chain_fields() -> None:
     assert response.status_code != 500
 
 
+def test_gamma_aggregate_endpoint_rejects_missing_option_chain_fields() -> None:
+    with TestClient(app) as client:
+        response = client.post("/options/gamma-aggregate", json={"additionalProp1": {}})
+
+    assert response.status_code == 422
+    assert response.status_code != 500
+
+
 def test_option_chain_request_schema_includes_valid_swagger_example() -> None:
     with TestClient(app) as client:
         response = client.get("/openapi.json")
@@ -69,7 +77,7 @@ def test_options_post_request_bodies_use_option_chain_request_schema() -> None:
 
     assert response.status_code == 200
     paths = response.json()["paths"]
-    for path in ("/options/greeks", "/options/gamma-exposure"):
+    for path in ("/options/greeks", "/options/gamma-exposure", "/options/gamma-aggregate"):
         request_body = paths[path]["post"]["requestBody"]["content"]["application/json"]
         assert request_body["schema"]["$ref"].endswith("/OptionChainRequest")
         assert request_body["examples"]["option_chain"]["value"]["symbol"] == "SPY"
@@ -114,6 +122,7 @@ def test_openapi_documents_option_response_models() -> None:
         ("/options/{symbol}", "get"): "OptionChainResponse",
         ("/options/greeks", "post"): "GreeksResponse",
         ("/options/gamma-exposure", "post"): "GammaExposureResponse",
+        ("/options/gamma-aggregate", "post"): "GammaAggregateResponse",
     }
     for (path, method), schema_name in expected_refs.items():
         response_schema = paths[path][method]["responses"]["200"]["content"]["application/json"][
@@ -131,4 +140,7 @@ def test_openapi_documents_option_response_models() -> None:
     )
     assert schemas["GammaExposureResponse"]["properties"]["items"]["items"]["$ref"].endswith(
         "/GammaExposureItemResponse"
+    )
+    assert schemas["GammaAggregateResponse"]["properties"]["strikes"]["items"]["$ref"].endswith(
+        "/GammaAggregateStrikeResponse"
     )
