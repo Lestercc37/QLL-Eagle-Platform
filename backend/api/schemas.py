@@ -9,6 +9,67 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from backend.domain.models import ContractType, Greeks, OptionChain, OptionContract
 
 
+Number = int | float
+
+
+class MarketSnapshotResponse(BaseModel):
+    schema_version: int = Field(examples=[1])
+    symbol: str = Field(examples=["SPY"])
+    as_of: str = Field(examples=["2026-01-15T14:30:00Z"])
+    price: Number = Field(examples=[552.25])
+    volume: int = Field(examples=[1250000])
+
+
+class OptionContractResponse(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    occ_symbol: str = Field(examples=["SPY260220C00540000"])
+    strike: Number = Field(examples=[540])
+    contract_type: Literal["call", "put"] = Field(alias="type", examples=["call"])
+    bid: Number = Field(examples=[1.2])
+    ask: Number = Field(examples=[1.25])
+    iv: Number = Field(examples=[0.18])
+    delta: Number = Field(examples=[0.42])
+    gamma: Number = Field(examples=[0.03])
+    open_interest: int = Field(examples=[8000])
+    volume: int = Field(examples=[3400])
+
+
+class OptionChainResponse(BaseModel):
+    schema_version: int = Field(examples=[1])
+    symbol: str = Field(examples=["SPY"])
+    as_of: str = Field(examples=["2026-01-15T14:30:00Z"])
+    contracts: list[OptionContractResponse]
+
+
+class GreeksContractResponse(OptionContractResponse):
+    theta: Number | None = Field(default=None, examples=[-0.015])
+    vega: Number | None = Field(default=None, examples=[0.12])
+
+
+class GreeksResponse(BaseModel):
+    schema_version: int = Field(examples=[1])
+    symbol: str = Field(examples=["SPY"])
+    as_of: str = Field(examples=["2026-01-15T14:30:00Z"])
+    contracts: list[GreeksContractResponse]
+
+
+class GammaExposureItemResponse(BaseModel):
+    occ_symbol: str = Field(examples=["SPY260220C00540000"])
+    strike: Number = Field(examples=[540])
+    contract_type: Literal["call", "put"] = Field(examples=["call"])
+    expiration: date = Field(examples=["2026-02-20"])
+    gamma: Number = Field(examples=[0.03])
+    open_interest: int = Field(examples=[8000])
+    dealer_gamma_exposure: Number = Field(examples=[17820000])
+    sign: Number = Field(examples=[1])
+
+
+class GammaExposureResponse(BaseModel):
+    schema_version: int = Field(examples=[1])
+    items: list[GammaExposureItemResponse]
+
+
 class OptionContractRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
