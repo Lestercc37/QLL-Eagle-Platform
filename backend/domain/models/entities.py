@@ -165,6 +165,8 @@ class GammaAggregateItem:
     net_gamma: Decimal
     contract_count: int
     absolute_gamma: Decimal = Decimal("0")
+    open_interest: int = 0
+    volume: int = 0
 
     def __post_init__(self) -> None:
         _ensure_positive_decimal(self.strike, InvalidStrikeError, "strike")
@@ -178,9 +180,52 @@ class GammaAggregateItem:
             _ensure_finite_decimal(getattr(self, name), InvalidOptionError, name)
         if self.contract_count < 0:
             raise InvalidOptionError("contract_count cannot be negative")
+        if self.open_interest < 0 or self.volume < 0:
+            raise InvalidOptionError("open_interest and volume cannot be negative")
 
 
 GammaAggregateStrike = GammaAggregateItem
+
+
+@dataclass(frozen=True, slots=True)
+class Wall:
+    strike: Decimal
+    gamma: Decimal
+    open_interest: int
+    volume: int
+    confidence_score: Decimal
+
+    def __post_init__(self) -> None:
+        _ensure_positive_decimal(self.strike, InvalidStrikeError, "strike")
+        _ensure_finite_decimal(self.gamma, InvalidOptionError, "gamma")
+        _ensure_finite_decimal(self.confidence_score, InvalidOptionError, "confidence_score")
+        if self.open_interest < 0 or self.volume < 0:
+            raise InvalidOptionError("open_interest and volume cannot be negative")
+        if not Decimal("0") <= self.confidence_score <= Decimal("1"):
+            raise InvalidOptionError("confidence_score must be between 0 and 1")
+
+
+@dataclass(frozen=True, slots=True)
+class CallWall(Wall):
+    pass
+
+
+@dataclass(frozen=True, slots=True)
+class PutWall(Wall):
+    pass
+
+
+@dataclass(frozen=True, slots=True)
+class Walls:
+    symbol: str
+    as_of: datetime
+    call_wall: CallWall | None = None
+    put_wall: PutWall | None = None
+
+    def __post_init__(self) -> None:
+        if not self.symbol or not self.symbol.strip():
+            raise InvalidOptionError("walls symbol is required")
+        object.__setattr__(self, "symbol", self.symbol.upper())
 
 
 @dataclass(frozen=True, slots=True)

@@ -8,6 +8,7 @@ from backend.domain.models import (
     GammaAggregate,
     GammaExposure,
     GammaFlip,
+    Walls,
     MarketPrice,
     MarketSnapshot,
     OptionChain,
@@ -37,6 +38,10 @@ class IGammaAggregateCalculator(Protocol):
 
 class IGammaFlipCalculator(Protocol):
     def calculate(self, aggregate: GammaAggregate) -> GammaFlip: ...
+
+
+class IWallCalculator(Protocol):
+    def calculate(self, aggregate: GammaAggregate) -> Walls: ...
 
 
 class IStorage(Protocol):
