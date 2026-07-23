@@ -157,6 +157,45 @@ class OptionChain:
 
 
 @dataclass(frozen=True, slots=True)
+class MaxPainStrikePain:
+    strike: Decimal
+    total_call_pain: Decimal
+    total_put_pain: Decimal
+    total_pain: Decimal
+
+    def __post_init__(self) -> None:
+        _ensure_positive_decimal(self.strike, InvalidStrikeError, "strike")
+        for name in ("total_call_pain", "total_put_pain", "total_pain"):
+            _ensure_finite_decimal(getattr(self, name), InvalidOptionError, name)
+            if getattr(self, name) < 0:
+                raise InvalidOptionError(f"{name} cannot be negative")
+
+
+@dataclass(frozen=True, slots=True)
+class MaxPain:
+    symbol: str
+    as_of: datetime
+    max_pain_strike: Decimal
+    total_call_pain: Decimal
+    total_put_pain: Decimal
+    total_pain: Decimal
+    ranking: tuple[MaxPainStrikePain, ...] = field(default_factory=tuple)
+
+    def __post_init__(self) -> None:
+        if not self.symbol or not self.symbol.strip():
+            raise InvalidOptionError("max pain symbol is required")
+        object.__setattr__(self, "symbol", self.symbol.upper())
+        if self.max_pain_strike:
+            _ensure_positive_decimal(
+                self.max_pain_strike, InvalidStrikeError, "max_pain_strike"
+            )
+        for name in ("total_call_pain", "total_put_pain", "total_pain"):
+            _ensure_finite_decimal(getattr(self, name), InvalidOptionError, name)
+            if getattr(self, name) < 0:
+                raise InvalidOptionError(f"{name} cannot be negative")
+
+
+@dataclass(frozen=True, slots=True)
 class GammaAggregateItem:
     strike: Decimal
     total_gamma_exposure: Decimal

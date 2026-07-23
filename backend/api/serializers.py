@@ -12,6 +12,7 @@ from backend.domain.models import (
     GammaFlip,
     Greeks,
     MarketSnapshot,
+    MaxPain,
     OptionChain,
     OptionContract,
     SCHEMA_VERSION,
@@ -111,6 +112,27 @@ def gamma_flip_response(flip: GammaFlip) -> dict[str, Any]:
         "upper_gamma": _optional_num(flip.upper_gamma),
         "interpolation_ratio": _optional_num(flip.interpolation_ratio),
         "flip_found": flip.flip_found,
+    }
+
+
+def max_pain_response(max_pain: MaxPain) -> dict[str, Any]:
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "symbol": max_pain.symbol,
+        "as_of": _dt(max_pain.as_of),
+        "max_pain_strike": _num(max_pain.max_pain_strike),
+        "total_call_pain": _num(max_pain.total_call_pain),
+        "total_put_pain": _num(max_pain.total_put_pain),
+        "total_pain": _num(max_pain.total_pain),
+        "ranking": [
+            {
+                "strike": _num(item.strike),
+                "total_call_pain": _num(item.total_call_pain),
+                "total_put_pain": _num(item.total_put_pain),
+                "total_pain": _num(item.total_pain),
+            }
+            for item in max_pain.ranking
+        ],
     }
 
 

@@ -186,6 +186,24 @@ class GammaFlipResponse(BaseModel):
     flip_found: bool = Field(examples=[True])
 
 
+class MaxPainStrikePainResponse(BaseModel):
+    strike: Number = Field(examples=[540])
+    total_call_pain: Number = Field(examples=[12500])
+    total_put_pain: Number = Field(examples=[9000])
+    total_pain: Number = Field(examples=[21500])
+
+
+class MaxPainResponse(BaseModel):
+    schema_version: int = Field(examples=[1])
+    symbol: str = Field(examples=["SPY"])
+    as_of: str = Field(examples=["2026-01-15T14:30:00Z"])
+    max_pain_strike: Number = Field(examples=[540])
+    total_call_pain: Number = Field(examples=[12500])
+    total_put_pain: Number = Field(examples=[9000])
+    total_pain: Number = Field(examples=[21500])
+    ranking: list[MaxPainStrikePainResponse] = Field(max_length=5)
+
+
 class OptionContractRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 

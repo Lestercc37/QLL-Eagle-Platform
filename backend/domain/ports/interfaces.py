@@ -11,6 +11,7 @@ from backend.domain.models import (
     Walls,
     MarketPrice,
     MarketSnapshot,
+    MaxPain,
     OptionChain,
     Underlying,
 )
@@ -42,6 +43,10 @@ class IGammaFlipCalculator(Protocol):
 
 class IWallCalculator(Protocol):
     def calculate(self, aggregate: GammaAggregate) -> Walls: ...
+
+
+class IMaxPainCalculator(Protocol):
+    def calculate(self, chain: OptionChain) -> MaxPain: ...
 
 
 class IStorage(Protocol):
