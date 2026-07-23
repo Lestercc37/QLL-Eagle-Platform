@@ -1,3 +1,4 @@
+from backend.application.use_cases.calculate_institutional_analysis import CalculateInstitutionalAnalysisUseCase
 from backend.application.use_cases.calculate_dealer_positioning import CalculateDealerPositioningUseCase
 from backend.application.use_cases.calculate_gamma_aggregate import CalculateGammaAggregateUseCase
 from backend.application.use_cases.calculate_gamma_exposure import CalculateGammaExposureUseCase
@@ -9,6 +10,7 @@ from backend.application.use_cases.load_option_chain import LoadOptionChainUseCa
 from backend.application.use_cases.market_snapshot import GetMarketSnapshotUseCase
 
 __all__ = [
+    "CalculateInstitutionalAnalysisUseCase",
     "CalculateDealerPositioningUseCase",
     "CalculateGammaAggregateUseCase",
     "CalculateGammaExposureUseCase",

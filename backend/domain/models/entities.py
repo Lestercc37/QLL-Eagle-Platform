@@ -468,6 +468,32 @@ class MarketSnapshot:
             raise InvalidOptionError("price and volume cannot be negative")
 
 
+@dataclass(frozen=True, slots=True)
+class InstitutionalAnalysis:
+    market_snapshot: MarketSnapshot
+    option_chain: OptionChain
+    gamma_exposure: tuple[GammaExposure, ...]
+    gamma_aggregate: GammaAggregate
+    gamma_flip: GammaFlip
+    walls: Walls
+    max_pain: MaxPain
+    dealer_positioning: DealerPositioning
+    overall_bias: str
+    confidence_score: Decimal
+    market_regime: str
+    timestamp: datetime
+    schema_version: int = SCHEMA_VERSION
+
+    def __post_init__(self) -> None:
+        if self.overall_bias not in ("Bullish", "Bearish", "Neutral"):
+            raise InvalidOptionError("overall_bias must be Bullish, Bearish, or Neutral")
+        _ensure_finite_decimal(self.confidence_score, InvalidOptionError, "confidence_score")
+        if not Decimal("0") <= self.confidence_score <= Decimal("1"):
+            raise InvalidOptionError("confidence_score must be between 0 and 1")
+        if not self.market_regime or not self.market_regime.strip():
+            raise InvalidOptionError("market_regime is required")
+
+
 def utc_now() -> datetime:
     return datetime.now(timezone.utc)
 

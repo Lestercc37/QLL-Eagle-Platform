@@ -16,6 +16,7 @@ from backend.adapters.storage.postgresql import PostgreSQLStorage
 from backend.application.use_cases import (
     CalculateDealerPositioningUseCase,
     CalculateGammaAggregateUseCase,
+    CalculateInstitutionalAnalysisUseCase,
     CalculateGammaExposureUseCase,
     CalculateGammaFlipUseCase,
     CalculateGreeksUseCase,
@@ -66,6 +67,7 @@ class Container:
     calculate_gamma_flip_use_case: CalculateGammaFlipUseCase
     calculate_walls_use_case: CalculateWallsUseCase
     calculate_max_pain_use_case: CalculateMaxPainUseCase
+    calculate_institutional_analysis_use_case: CalculateInstitutionalAnalysisUseCase
 
 
 def build_container() -> Container:
@@ -99,6 +101,16 @@ def build_container() -> Container:
     calculate_gamma_flip_use_case = CalculateGammaFlipUseCase(gamma_flip_calculator)
     calculate_walls_use_case = CalculateWallsUseCase(wall_calculator)
     calculate_max_pain_use_case = CalculateMaxPainUseCase(max_pain_calculator)
+    calculate_institutional_analysis_use_case = CalculateInstitutionalAnalysisUseCase(
+        get_market_snapshot_use_case=get_market_snapshot_use_case,
+        calculate_greeks_use_case=calculate_greeks_use_case,
+        calculate_gamma_exposure_use_case=calculate_gamma_exposure_use_case,
+        calculate_gamma_aggregate_use_case=calculate_gamma_aggregate_use_case,
+        calculate_gamma_flip_use_case=calculate_gamma_flip_use_case,
+        calculate_walls_use_case=calculate_walls_use_case,
+        calculate_max_pain_use_case=calculate_max_pain_use_case,
+        calculate_dealer_positioning_use_case=calculate_dealer_positioning_use_case,
+    )
     return Container(
         settings=settings,
         database_engine=database_engine,
@@ -121,4 +133,5 @@ def build_container() -> Container:
         calculate_gamma_flip_use_case=calculate_gamma_flip_use_case,
         calculate_walls_use_case=calculate_walls_use_case,
         calculate_max_pain_use_case=calculate_max_pain_use_case,
+        calculate_institutional_analysis_use_case=calculate_institutional_analysis_use_case,
     )

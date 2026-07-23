@@ -12,6 +12,7 @@ from backend.api.schemas import (
     GammaExposureResponse,
     GammaFlipRequest,
     GammaFlipResponse,
+    InstitutionalAnalysisResponse,
     MaxPainResponse,
     WallsResponse,
     GreeksResponse,
@@ -24,6 +25,7 @@ from backend.api.serializers import (
     gamma_aggregate_response,
     gamma_exposure_response,
     gamma_flip_response,
+    institutional_analysis_response,
     max_pain_response,
     walls_response,
     greeks_chain_response,
@@ -216,6 +218,22 @@ def calculate_gamma_flip(payload: GammaFlipBody, request: Request) -> GammaFlipR
     aggregate = _gamma_aggregate_from_request(payload)
     gamma_flip = container.calculate_gamma_flip_use_case.execute(aggregate)
     return GammaFlipResponse.model_validate(gamma_flip_response(gamma_flip))
+
+
+@router.post(
+    "/options/institutional-analysis",
+    response_model=InstitutionalAnalysisResponse,
+    summary="Run the complete institutional options analysis engine",
+)
+def calculate_institutional_analysis(
+    payload: OptionChainBody, request: Request
+) -> InstitutionalAnalysisResponse:
+    container: Container = request.app.state.container
+    chain = _chain_from_request(payload)
+    analysis = container.calculate_institutional_analysis_use_case.execute(chain)
+    return InstitutionalAnalysisResponse.model_validate(
+        institutional_analysis_response(analysis)
+    )
 
 
 def _chain_from_request(payload: OptionChainRequest) -> OptionChain:
