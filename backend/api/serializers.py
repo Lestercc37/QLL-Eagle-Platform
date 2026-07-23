@@ -9,6 +9,7 @@ from backend.domain.models import (
     FlowEvent,
     GammaAggregate,
     GammaExposure,
+    GammaFlip,
     Greeks,
     MarketSnapshot,
     OptionChain,
@@ -89,6 +90,19 @@ def gamma_exposure_response(items: tuple[GammaExposure, ...]) -> dict[str, Any]:
     }
 
 
+def gamma_flip_response(flip: GammaFlip) -> dict[str, Any]:
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "gamma_flip_price": _optional_num(flip.gamma_flip_price),
+        "lower_strike": _optional_num(flip.lower_strike),
+        "upper_strike": _optional_num(flip.upper_strike),
+        "lower_gamma": _optional_num(flip.lower_gamma),
+        "upper_gamma": _optional_num(flip.upper_gamma),
+        "interpolation_ratio": _optional_num(flip.interpolation_ratio),
+        "flip_found": flip.flip_found,
+    }
+
+
 def option_chain_from_payload(payload: dict[str, Any]) -> OptionChain:
     return OptionChain(
         symbol=str(payload["symbol"]),
@@ -166,3 +180,9 @@ def _num(value: Decimal) -> int | float:
     if value == value.to_integral_value():
         return int(value)
     return float(value)
+
+
+def _optional_num(value: Decimal | None) -> int | float | None:
+    if value is None:
+        return None
+    return _num(value)

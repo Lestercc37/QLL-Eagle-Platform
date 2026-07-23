@@ -8,6 +8,8 @@ from fastapi import APIRouter, Body, HTTPException, Request
 from backend.api.schemas import (
     GammaAggregateResponse,
     GammaExposureResponse,
+    GammaFlipRequest,
+    GammaFlipResponse,
     GreeksResponse,
     OptionChainRequest,
     OptionChainResponse,
@@ -16,6 +18,7 @@ from backend.api.serializers import (
     chain_response,
     gamma_aggregate_response,
     gamma_exposure_response,
+    gamma_flip_response,
     greeks_chain_response,
 )
 from backend.core.container import Container
@@ -52,6 +55,41 @@ OptionChainBody = Annotated[
             "option_chain": {
                 "summary": "Option chain request",
                 "value": OPTION_CHAIN_REQUEST_EXAMPLE,
+            }
+        },
+    ),
+]
+
+GammaFlipBody = Annotated[
+    GammaFlipRequest,
+    Body(
+        openapi_examples={
+            "gamma_aggregate": {
+                "summary": "Gamma Aggregate request",
+                "value": {
+                    "symbol": "SPY",
+                    "as_of": "2026-01-15T14:30:00Z",
+                    "items": [
+                        {
+                            "strike": 540,
+                            "total_gamma_exposure": 390,
+                            "call_gamma_exposure": 240,
+                            "put_gamma_exposure": 150,
+                            "net_gamma": 90,
+                            "contract_count": 2,
+                            "absolute_gamma": 90,
+                        },
+                        {
+                            "strike": 545,
+                            "total_gamma_exposure": 210,
+                            "call_gamma_exposure": 200,
+                            "put_gamma_exposure": 10,
+                            "net_gamma": -10,
+                            "contract_count": 2,
+                            "absolute_gamma": 10,
+                        },
+                    ],
+                },
             }
         },
     ),
@@ -123,7 +161,26 @@ def calculate_gamma_exposure(payload: OptionChainBody, request: Request) -> Gamm
     return GammaExposureResponse.model_validate(gamma_exposure_response(gamma_exposures))
 
 
+@router.post(
+    "/options/gamma-flip",
+    response_model=GammaFlipResponse,
+    summary="Calculate Gamma Flip from Gamma Aggregate",
+)
+def calculate_gamma_flip(payload: GammaFlipBody, request: Request) -> GammaFlipResponse:
+    container: Container = request.app.state.container
+    aggregate = _gamma_aggregate_from_request(payload)
+    gamma_flip = container.calculate_gamma_flip_use_case.execute(aggregate)
+    return GammaFlipResponse.model_validate(gamma_flip_response(gamma_flip))
+
+
 def _chain_from_request(payload: OptionChainRequest) -> OptionChain:
+    try:
+        return payload.to_domain()
+    except DomainError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+def _gamma_aggregate_from_request(payload: GammaFlipRequest):
     try:
         return payload.to_domain()
     except DomainError as exc:

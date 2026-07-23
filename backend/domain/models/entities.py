@@ -231,6 +231,38 @@ class GammaAggregate:
 
 
 @dataclass(frozen=True, slots=True)
+class GammaFlip:
+    gamma_flip_price: Decimal | None = None
+    lower_strike: Decimal | None = None
+    upper_strike: Decimal | None = None
+    lower_gamma: Decimal | None = None
+    upper_gamma: Decimal | None = None
+    interpolation_ratio: Decimal | None = None
+    flip_found: bool = False
+
+    def __post_init__(self) -> None:
+        for name in (
+            "gamma_flip_price",
+            "lower_strike",
+            "upper_strike",
+            "lower_gamma",
+            "upper_gamma",
+            "interpolation_ratio",
+        ):
+            value = getattr(self, name)
+            if value is not None:
+                _ensure_finite_decimal(value, InvalidOptionError, name)
+        if self.gamma_flip_price is not None:
+            _ensure_positive_decimal(
+                self.gamma_flip_price, InvalidStrikeError, "gamma_flip_price"
+            )
+        if self.lower_strike is not None:
+            _ensure_positive_decimal(self.lower_strike, InvalidStrikeError, "lower_strike")
+        if self.upper_strike is not None:
+            _ensure_positive_decimal(self.upper_strike, InvalidStrikeError, "upper_strike")
+
+
+@dataclass(frozen=True, slots=True)
 class GammaExposure:
     occ_symbol: str
     strike: Decimal
