@@ -8,6 +8,7 @@ from backend.adapters.greeks.fake import FakeGreeksCalculator
 from backend.adapters.greeks.gamma_aggregate import FakeGammaAggregateCalculator
 from backend.adapters.greeks.gamma_exposure import FakeGammaExposureCalculator
 from backend.adapters.greeks.gamma_flip import FakeGammaFlipCalculator
+from backend.adapters.greeks.walls import FakeWallCalculator
 from backend.adapters.providers.fake import FakeMarketDataProvider
 from backend.adapters.storage.postgresql import PostgreSQLStorage
 from backend.application.use_cases import (
@@ -15,6 +16,7 @@ from backend.application.use_cases import (
     CalculateGammaExposureUseCase,
     CalculateGammaFlipUseCase,
     CalculateGreeksUseCase,
+    CalculateWallsUseCase,
     GetMarketSnapshotUseCase,
     LoadOptionChainUseCase,
 )
@@ -25,6 +27,7 @@ from backend.domain.ports import (
     IGammaExposureCalculator,
     IGammaFlipCalculator,
     IGreeksCalculator,
+    IWallCalculator,
 )
 
 
@@ -45,12 +48,14 @@ class Container:
     gamma_exposure_calculator: IGammaExposureCalculator
     gamma_aggregate_calculator: IGammaAggregateCalculator
     gamma_flip_calculator: IGammaFlipCalculator
+    wall_calculator: IWallCalculator
     get_market_snapshot_use_case: GetMarketSnapshotUseCase
     load_option_chain_use_case: LoadOptionChainUseCase
     calculate_greeks_use_case: CalculateGreeksUseCase
     calculate_gamma_exposure_use_case: CalculateGammaExposureUseCase
     calculate_gamma_aggregate_use_case: CalculateGammaAggregateUseCase
     calculate_gamma_flip_use_case: CalculateGammaFlipUseCase
+    calculate_walls_use_case: CalculateWallsUseCase
 
 
 def build_container() -> Container:
@@ -66,6 +71,7 @@ def build_container() -> Container:
     gamma_exposure_calculator = FakeGammaExposureCalculator()
     gamma_aggregate_calculator = FakeGammaAggregateCalculator()
     gamma_flip_calculator = FakeGammaFlipCalculator()
+    wall_calculator = FakeWallCalculator()
     get_market_snapshot_use_case = GetMarketSnapshotUseCase(market_data_provider)
     load_option_chain_use_case = LoadOptionChainUseCase(market_data_provider)
     calculate_greeks_use_case = CalculateGreeksUseCase(greeks_calculator)
@@ -76,6 +82,7 @@ def build_container() -> Container:
         gamma_exposure_calculator, gamma_aggregate_calculator
     )
     calculate_gamma_flip_use_case = CalculateGammaFlipUseCase(gamma_flip_calculator)
+    calculate_walls_use_case = CalculateWallsUseCase(wall_calculator)
     return Container(
         settings=settings,
         database_engine=database_engine,
@@ -86,10 +93,12 @@ def build_container() -> Container:
         gamma_exposure_calculator=gamma_exposure_calculator,
         gamma_aggregate_calculator=gamma_aggregate_calculator,
         gamma_flip_calculator=gamma_flip_calculator,
+        wall_calculator=wall_calculator,
         get_market_snapshot_use_case=get_market_snapshot_use_case,
         load_option_chain_use_case=load_option_chain_use_case,
         calculate_greeks_use_case=calculate_greeks_use_case,
         calculate_gamma_exposure_use_case=calculate_gamma_exposure_use_case,
         calculate_gamma_aggregate_use_case=calculate_gamma_aggregate_use_case,
         calculate_gamma_flip_use_case=calculate_gamma_flip_use_case,
+        calculate_walls_use_case=calculate_walls_use_case,
     )

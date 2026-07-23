@@ -16,6 +16,7 @@ from backend.domain.models import (
     OptionContract,
     SCHEMA_VERSION,
     Underlying,
+    Walls,
 )
 from backend.domain.use_cases.errors import QllError
 
@@ -90,6 +91,16 @@ def gamma_exposure_response(items: tuple[GammaExposure, ...]) -> dict[str, Any]:
     }
 
 
+def walls_response(walls: Walls) -> dict[str, Any]:
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "symbol": walls.symbol,
+        "as_of": _dt(walls.as_of),
+        "call_wall": _wall_response(walls.call_wall),
+        "put_wall": _wall_response(walls.put_wall),
+    }
+
+
 def gamma_flip_response(flip: GammaFlip) -> dict[str, Any]:
     return {
         "schema_version": SCHEMA_VERSION,
@@ -136,6 +147,18 @@ def websocket_message(channel: str, symbol: str, payload: dict[str, Any], as_of:
 
 def error_response(error: QllError) -> dict[str, Any]:
     return {"schema_version": SCHEMA_VERSION, "error": {"code": error.code, "message": str(error)}}
+
+
+def _wall_response(wall: Any) -> dict[str, Any] | None:
+    if wall is None:
+        return None
+    return {
+        "strike": _num(wall.strike),
+        "gamma": _num(wall.gamma),
+        "open_interest": wall.open_interest,
+        "volume": wall.volume,
+        "confidence_score": _num(wall.confidence_score),
+    }
 
 
 def _contract_from_payload(default_symbol: str, payload: dict[str, Any]) -> OptionContract:

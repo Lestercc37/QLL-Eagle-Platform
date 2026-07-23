@@ -10,6 +10,7 @@ from backend.api.schemas import (
     GammaExposureResponse,
     GammaFlipRequest,
     GammaFlipResponse,
+    WallsResponse,
     GreeksResponse,
     OptionChainRequest,
     OptionChainResponse,
@@ -19,6 +20,7 @@ from backend.api.serializers import (
     gamma_aggregate_response,
     gamma_exposure_response,
     gamma_flip_response,
+    walls_response,
     greeks_chain_response,
 )
 from backend.core.container import Container
@@ -159,6 +161,18 @@ def calculate_gamma_exposure(payload: OptionChainBody, request: Request) -> Gamm
     chain = _chain_from_request(payload)
     gamma_exposures = container.calculate_gamma_exposure_use_case.execute(chain)
     return GammaExposureResponse.model_validate(gamma_exposure_response(gamma_exposures))
+
+
+@router.post(
+    "/options/walls",
+    response_model=WallsResponse,
+    summary="Calculate institutional Call Wall and Put Wall from Gamma Aggregate",
+)
+def calculate_walls(payload: GammaFlipBody, request: Request) -> WallsResponse:
+    container: Container = request.app.state.container
+    aggregate = _gamma_aggregate_from_request(payload)
+    walls = container.calculate_walls_use_case.execute(aggregate)
+    return WallsResponse.model_validate(walls_response(walls))
 
 
 @router.post(

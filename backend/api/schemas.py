@@ -85,6 +85,8 @@ class GammaAggregateItemResponse(BaseModel):
     net_gamma: Number = Field(examples=[90])
     contract_count: int = Field(examples=[2])
     absolute_gamma: Number = Field(examples=[90])
+    open_interest: int = Field(default=0, ge=0, examples=[14000])
+    volume: int = Field(default=0, ge=0, examples=[6800])
 
 
 GammaAggregateStrikeResponse = GammaAggregateItemResponse
@@ -149,10 +151,28 @@ class GammaFlipRequest(BaseModel):
                     net_gamma=Decimal(str(item.net_gamma)),
                     contract_count=item.contract_count,
                     absolute_gamma=Decimal(str(item.absolute_gamma)),
+                    open_interest=item.open_interest,
+                    volume=item.volume,
                 )
                 for item in self.items
             ),
         )
+
+
+class WallResponse(BaseModel):
+    strike: Number = Field(examples=[545])
+    gamma: Number = Field(examples=[200])
+    open_interest: int = Field(examples=[6000])
+    volume: int = Field(examples=[4200])
+    confidence_score: Number = Field(examples=[0.4545])
+
+
+class WallsResponse(BaseModel):
+    schema_version: int = Field(examples=[1])
+    symbol: str = Field(examples=["SPY"])
+    as_of: str = Field(examples=["2026-01-15T14:30:00Z"])
+    call_wall: WallResponse | None = None
+    put_wall: WallResponse | None = None
 
 
 class GammaFlipResponse(BaseModel):
