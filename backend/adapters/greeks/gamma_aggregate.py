@@ -37,6 +37,7 @@ class FakeGammaAggregateCalculator(IGammaAggregateCalculator):
             call_gamma_exposure = call_gamma_by_strike[strike]
             put_gamma_exposure = put_gamma_by_strike[strike]
             net_gamma = call_gamma_exposure + put_gamma_exposure
+            absolute_gamma = abs(net_gamma)
             total_gamma_exposure = abs(call_gamma_exposure) + abs(put_gamma_exposure)
             if net_gamma > 0:
                 positive_gamma += net_gamma
@@ -50,10 +51,14 @@ class FakeGammaAggregateCalculator(IGammaAggregateCalculator):
                     put_gamma_exposure=put_gamma_exposure,
                     net_gamma=net_gamma,
                     contract_count=contract_count_by_strike[strike],
+                    absolute_gamma=absolute_gamma,
                 )
             )
 
         total_market_gamma = sum((item.net_gamma for item in items), Decimal("0"))
+        peak_gamma_item = max(items, key=lambda item: item.absolute_gamma, default=None)
+        peak_gamma_strike = peak_gamma_item.strike if peak_gamma_item is not None else Decimal("0")
+        peak_gamma_value = peak_gamma_item.absolute_gamma if peak_gamma_item is not None else Decimal("0")
         return GammaAggregate(
             symbol=symbol,
             as_of=as_of,
@@ -64,4 +69,6 @@ class FakeGammaAggregateCalculator(IGammaAggregateCalculator):
             total_gamma=total_market_gamma,
             net_gamma=total_market_gamma,
             dealer_gamma_notional=total_market_gamma,
+            peak_gamma_strike=peak_gamma_strike,
+            peak_gamma_value=peak_gamma_value,
         )

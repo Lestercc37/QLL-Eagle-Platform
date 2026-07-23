@@ -34,6 +34,7 @@ def test_fake_gamma_aggregate_calculator_groups_gamma_exposure_by_strike() -> No
                 put_gamma_exposure=Decimal("-150.000"),
                 net_gamma=Decimal("90.000"),
                 contract_count=2,
+                absolute_gamma=Decimal("90.000"),
             ),
             GammaAggregateItem(
                 strike=Decimal("545"),
@@ -42,6 +43,7 @@ def test_fake_gamma_aggregate_calculator_groups_gamma_exposure_by_strike() -> No
                 put_gamma_exposure=Decimal("-10.000"),
                 net_gamma=Decimal("190.000"),
                 contract_count=2,
+                absolute_gamma=Decimal("190.000"),
             ),
         ),
         total_market_gamma=Decimal("280.000"),
@@ -50,7 +52,21 @@ def test_fake_gamma_aggregate_calculator_groups_gamma_exposure_by_strike() -> No
         total_gamma=Decimal("280.000"),
         net_gamma=Decimal("280.000"),
         dealer_gamma_notional=Decimal("280.000"),
+        peak_gamma_strike=Decimal("545"),
+        peak_gamma_value=Decimal("190.000"),
     )
+
+
+def test_fake_gamma_aggregate_calculator_selects_peak_by_absolute_gamma() -> None:
+    chain = _chain()
+    exposures = FakeGammaExposureCalculator().calculate(chain)
+
+    aggregate = FakeGammaAggregateCalculator().calculate(exposures, chain.symbol, chain.as_of)
+
+    assert aggregate.items[0].absolute_gamma == Decimal("90.000")
+    assert aggregate.items[1].absolute_gamma == Decimal("190.000")
+    assert aggregate.peak_gamma_strike == Decimal("545")
+    assert aggregate.peak_gamma_value == Decimal("190.000")
 
 
 def test_calculate_gamma_aggregate_use_case_uses_gamma_exposure_output() -> None:
@@ -90,6 +106,8 @@ def test_gamma_aggregate_endpoint_returns_strike_aggregate() -> None:
         "total_market_gamma": 280,
         "positive_gamma": 280,
         "negative_gamma": 0,
+        "peak_gamma_strike": 545,
+        "peak_gamma_value": 190,
         "items": [
             {
                 "strike": 540,
@@ -98,6 +116,7 @@ def test_gamma_aggregate_endpoint_returns_strike_aggregate() -> None:
                 "put_gamma_exposure": -150,
                 "net_gamma": 90,
                 "contract_count": 2,
+                "absolute_gamma": 90,
             },
             {
                 "strike": 545,
@@ -106,6 +125,7 @@ def test_gamma_aggregate_endpoint_returns_strike_aggregate() -> None:
                 "put_gamma_exposure": -10,
                 "net_gamma": 190,
                 "contract_count": 2,
+                "absolute_gamma": 190,
             },
         ],
     }

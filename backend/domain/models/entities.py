@@ -164,6 +164,7 @@ class GammaAggregateItem:
     put_gamma_exposure: Decimal
     net_gamma: Decimal
     contract_count: int
+    absolute_gamma: Decimal = Decimal("0")
 
     def __post_init__(self) -> None:
         _ensure_positive_decimal(self.strike, InvalidStrikeError, "strike")
@@ -172,6 +173,7 @@ class GammaAggregateItem:
             "call_gamma_exposure",
             "put_gamma_exposure",
             "net_gamma",
+            "absolute_gamma",
         ):
             _ensure_finite_decimal(getattr(self, name), InvalidOptionError, name)
         if self.contract_count < 0:
@@ -196,6 +198,8 @@ class GammaAggregate:
     max_pain: Decimal = Decimal("0")
     net_gamma: Decimal = Decimal("0")
     dealer_gamma_notional: Decimal = Decimal("0")
+    peak_gamma_strike: Decimal = Decimal("0")
+    peak_gamma_value: Decimal = Decimal("0")
 
     def __post_init__(self) -> None:
         if not self.symbol or not self.symbol.strip():
@@ -212,6 +216,8 @@ class GammaAggregate:
             "max_pain",
             "net_gamma",
             "dealer_gamma_notional",
+            "peak_gamma_strike",
+            "peak_gamma_value",
         ):
             _ensure_finite_decimal(getattr(self, name), InvalidOptionError, name)
 

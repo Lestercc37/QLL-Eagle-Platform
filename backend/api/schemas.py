@@ -77,6 +77,7 @@ class GammaAggregateItemResponse(BaseModel):
     put_gamma_exposure: Number = Field(examples=[-150])
     net_gamma: Number = Field(examples=[90])
     contract_count: int = Field(examples=[2])
+    absolute_gamma: Number = Field(examples=[90])
 
 
 GammaAggregateStrikeResponse = GammaAggregateItemResponse
@@ -89,6 +90,8 @@ class GammaAggregateResponse(BaseModel):
     total_market_gamma: Number = Field(examples=[280])
     positive_gamma: Number = Field(examples=[280])
     negative_gamma: Number = Field(examples=[0])
+    peak_gamma_strike: Number = Field(examples=[545])
+    peak_gamma_value: Number = Field(examples=[190])
     items: list[GammaAggregateItemResponse]
 
 
