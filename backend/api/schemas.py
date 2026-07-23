@@ -321,12 +321,21 @@ class DealerPositioningRequest(BaseModel):
     as_of: datetime = Field(examples=["2026-01-15T14:30:00Z"])
     gamma_exposure: list[DealerPositioningGammaExposureItemRequest] = Field(min_length=1)
     gamma_aggregate: GammaFlipRequest
-    gamma_flip: DealerPositioningGammaFlipRequest
+    gamma_flip: DealerPositioningGammaFlipRequest | None = Field(
+        default=None,
+        description=(
+            "Optional precomputed Gamma Flip. Omit this field to calculate it from "
+            "gamma_aggregate. When gamma_flip_price is provided it must be greater than zero."
+        ),
+    )
     call_wall: WallResponse | None = None
     put_wall: WallResponse | None = None
     max_pain: DealerPositioningMaxPainRequest
 
-    def to_domain(self) -> DealerPositioningInput:
+    def to_domain(self, gamma_flip: GammaFlip | None = None) -> DealerPositioningInput:
+        resolved_gamma_flip = gamma_flip or (
+            self.gamma_flip.to_domain() if self.gamma_flip is not None else GammaFlip()
+        )
         return DealerPositioningInput(
             gamma_exposure=tuple(
                 GammaExposure(
@@ -342,7 +351,7 @@ class DealerPositioningRequest(BaseModel):
                 for item in self.gamma_exposure
             ),
             gamma_aggregate=self.gamma_aggregate.to_domain(),
-            gamma_flip=self.gamma_flip.to_domain(),
+            gamma_flip=resolved_gamma_flip,
             call_wall=_wall_to_domain(self.call_wall, CallWall),
             put_wall=_wall_to_domain(self.put_wall, PutWall),
             max_pain=self.max_pain.to_domain(),
