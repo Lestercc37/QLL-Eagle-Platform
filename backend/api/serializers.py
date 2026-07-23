@@ -6,6 +6,7 @@ from typing import Any
 
 from backend.domain.models import (
     ContractType,
+    DealerPositioning,
     FlowEvent,
     GammaAggregate,
     GammaExposure,
@@ -112,6 +113,20 @@ def gamma_flip_response(flip: GammaFlip) -> dict[str, Any]:
         "upper_gamma": _optional_num(flip.upper_gamma),
         "interpolation_ratio": _optional_num(flip.interpolation_ratio),
         "flip_found": flip.flip_found,
+    }
+
+
+def dealer_positioning_response(positioning: DealerPositioning) -> dict[str, Any]:
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "symbol": positioning.symbol,
+        "as_of": _dt(positioning.as_of),
+        "dealer_state": positioning.dealer_state,
+        "dealer_bias": positioning.dealer_bias,
+        "hedging_pressure": _num(positioning.hedging_pressure),
+        "expected_volatility": positioning.expected_volatility,
+        "liquidity_regime": positioning.liquidity_regime,
+        "confidence_score": _num(positioning.confidence_score),
     }
 
 

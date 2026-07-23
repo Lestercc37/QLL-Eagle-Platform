@@ -377,6 +377,45 @@ class GammaExposure:
 
 
 @dataclass(frozen=True, slots=True)
+class DealerPositioningInput:
+    gamma_exposure: tuple[GammaExposure, ...]
+    gamma_aggregate: GammaAggregate
+    gamma_flip: GammaFlip
+    call_wall: CallWall | None
+    put_wall: PutWall | None
+    max_pain: MaxPain
+
+
+@dataclass(frozen=True, slots=True)
+class DealerPositioning:
+    symbol: str
+    as_of: datetime
+    dealer_state: str
+    dealer_bias: str
+    hedging_pressure: Decimal
+    expected_volatility: str
+    liquidity_regime: str
+    confidence_score: Decimal
+
+    def __post_init__(self) -> None:
+        if not self.symbol or not self.symbol.strip():
+            raise InvalidOptionError("dealer positioning symbol is required")
+        object.__setattr__(self, "symbol", self.symbol.upper())
+        if self.dealer_state not in ("Long Gamma", "Short Gamma", "Neutral"):
+            raise InvalidOptionError("dealer_state must be Long Gamma, Short Gamma, or Neutral")
+        if self.dealer_bias not in ("Bullish", "Bearish", "Neutral"):
+            raise InvalidOptionError("dealer_bias must be Bullish, Bearish, or Neutral")
+        if self.expected_volatility not in ("High", "Low", "Normal"):
+            raise InvalidOptionError("expected_volatility must be High, Low, or Normal")
+        if self.liquidity_regime not in ("Deep", "Balanced", "Thin"):
+            raise InvalidOptionError("liquidity_regime must be Deep, Balanced, or Thin")
+        for name in ("hedging_pressure", "confidence_score"):
+            _ensure_finite_decimal(getattr(self, name), InvalidOptionError, name)
+            if not Decimal("0") <= getattr(self, name) <= Decimal("1"):
+                raise InvalidOptionError(f"{name} must be between 0 and 1")
+
+
+@dataclass(frozen=True, slots=True)
 class MarketPrice:
     symbol: str
     as_of: datetime

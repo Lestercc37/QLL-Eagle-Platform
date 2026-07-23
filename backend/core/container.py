@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
+from backend.adapters.greeks.dealer_positioning import FakeDealerPositioningCalculator
 from backend.adapters.greeks.fake import FakeGreeksCalculator
 from backend.adapters.greeks.gamma_aggregate import FakeGammaAggregateCalculator
 from backend.adapters.greeks.gamma_exposure import FakeGammaExposureCalculator
@@ -13,6 +14,7 @@ from backend.adapters.greeks.walls import FakeWallCalculator
 from backend.adapters.providers.fake import FakeMarketDataProvider
 from backend.adapters.storage.postgresql import PostgreSQLStorage
 from backend.application.use_cases import (
+    CalculateDealerPositioningUseCase,
     CalculateGammaAggregateUseCase,
     CalculateGammaExposureUseCase,
     CalculateGammaFlipUseCase,
@@ -25,6 +27,7 @@ from backend.application.use_cases import (
 from backend.core.settings import Settings, get_settings
 from backend.domain.ports import (
     IDataProvider,
+    IDealerPositioningCalculator,
     IGammaAggregateCalculator,
     IGammaExposureCalculator,
     IGammaFlipCalculator,
@@ -47,6 +50,7 @@ class Container:
     session_factory: async_sessionmaker[AsyncSession]
     storage: PostgreSQLStorage
     market_data_provider: IDataProvider
+    dealer_positioning_calculator: IDealerPositioningCalculator
     greeks_calculator: IGreeksCalculator
     gamma_exposure_calculator: IGammaExposureCalculator
     gamma_aggregate_calculator: IGammaAggregateCalculator
@@ -55,6 +59,7 @@ class Container:
     max_pain_calculator: IMaxPainCalculator
     get_market_snapshot_use_case: GetMarketSnapshotUseCase
     load_option_chain_use_case: LoadOptionChainUseCase
+    calculate_dealer_positioning_use_case: CalculateDealerPositioningUseCase
     calculate_greeks_use_case: CalculateGreeksUseCase
     calculate_gamma_exposure_use_case: CalculateGammaExposureUseCase
     calculate_gamma_aggregate_use_case: CalculateGammaAggregateUseCase
@@ -72,6 +77,7 @@ def build_container() -> Container:
     session_factory = create_session_factory(database_engine)
     storage = PostgreSQLStorage(session_factory)
     market_data_provider = FakeMarketDataProvider()
+    dealer_positioning_calculator = FakeDealerPositioningCalculator()
     greeks_calculator = FakeGreeksCalculator()
     gamma_exposure_calculator = FakeGammaExposureCalculator()
     gamma_aggregate_calculator = FakeGammaAggregateCalculator()
@@ -80,6 +86,9 @@ def build_container() -> Container:
     max_pain_calculator = FakeMaxPainCalculator()
     get_market_snapshot_use_case = GetMarketSnapshotUseCase(market_data_provider)
     load_option_chain_use_case = LoadOptionChainUseCase(market_data_provider)
+    calculate_dealer_positioning_use_case = CalculateDealerPositioningUseCase(
+        dealer_positioning_calculator
+    )
     calculate_greeks_use_case = CalculateGreeksUseCase(greeks_calculator)
     calculate_gamma_exposure_use_case = CalculateGammaExposureUseCase(
         gamma_exposure_calculator
@@ -96,6 +105,7 @@ def build_container() -> Container:
         session_factory=session_factory,
         storage=storage,
         market_data_provider=market_data_provider,
+        dealer_positioning_calculator=dealer_positioning_calculator,
         greeks_calculator=greeks_calculator,
         gamma_exposure_calculator=gamma_exposure_calculator,
         gamma_aggregate_calculator=gamma_aggregate_calculator,
@@ -104,6 +114,7 @@ def build_container() -> Container:
         max_pain_calculator=max_pain_calculator,
         get_market_snapshot_use_case=get_market_snapshot_use_case,
         load_option_chain_use_case=load_option_chain_use_case,
+        calculate_dealer_positioning_use_case=calculate_dealer_positioning_use_case,
         calculate_greeks_use_case=calculate_greeks_use_case,
         calculate_gamma_exposure_use_case=calculate_gamma_exposure_use_case,
         calculate_gamma_aggregate_use_case=calculate_gamma_aggregate_use_case,
