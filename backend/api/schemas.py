@@ -7,12 +7,18 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from backend.domain.models import (
+    CallWall,
     ContractType,
+    DealerPositioningInput,
     GammaAggregate,
     GammaAggregateItem,
     Greeks,
     OptionChain,
     OptionContract,
+    PutWall,
+    GammaExposure,
+    GammaFlip,
+    MaxPain,
 )
 
 
@@ -202,6 +208,106 @@ class MaxPainResponse(BaseModel):
     total_put_pain: Number = Field(examples=[9000])
     total_pain: Number = Field(examples=[21500])
     ranking: list[MaxPainStrikePainResponse] = Field(max_length=5)
+
+
+class DealerPositioningGammaExposureItemRequest(GammaExposureItemResponse):
+    pass
+
+
+class DealerPositioningGammaFlipRequest(BaseModel):
+    gamma_flip_price: Number | None = None
+    lower_strike: Number | None = None
+    upper_strike: Number | None = None
+    lower_gamma: Number | None = None
+    upper_gamma: Number | None = None
+    interpolation_ratio: Number | None = None
+    flip_found: bool = False
+
+    def to_domain(self) -> GammaFlip:
+        return GammaFlip(
+            gamma_flip_price=_optional_decimal(self.gamma_flip_price),
+            lower_strike=_optional_decimal(self.lower_strike),
+            upper_strike=_optional_decimal(self.upper_strike),
+            lower_gamma=_optional_decimal(self.lower_gamma),
+            upper_gamma=_optional_decimal(self.upper_gamma),
+            interpolation_ratio=_optional_decimal(self.interpolation_ratio),
+            flip_found=self.flip_found,
+        )
+
+
+class DealerPositioningMaxPainRequest(MaxPainResponse):
+    def to_domain(self) -> MaxPain:
+        return MaxPain(
+            symbol=self.symbol,
+            as_of=datetime.fromisoformat(self.as_of.replace("Z", "+00:00")),
+            max_pain_strike=Decimal(str(self.max_pain_strike)),
+            total_call_pain=Decimal(str(self.total_call_pain)),
+            total_put_pain=Decimal(str(self.total_put_pain)),
+            total_pain=Decimal(str(self.total_pain)),
+        )
+
+
+class DealerPositioningRequest(BaseModel):
+    symbol: str = Field(min_length=1, examples=["SPY"])
+    as_of: datetime = Field(examples=["2026-01-15T14:30:00Z"])
+    gamma_exposure: list[DealerPositioningGammaExposureItemRequest] = Field(min_length=1)
+    gamma_aggregate: GammaFlipRequest
+    gamma_flip: DealerPositioningGammaFlipRequest
+    call_wall: WallResponse | None = None
+    put_wall: WallResponse | None = None
+    max_pain: DealerPositioningMaxPainRequest
+
+    def to_domain(self) -> DealerPositioningInput:
+        return DealerPositioningInput(
+            gamma_exposure=tuple(
+                GammaExposure(
+                    occ_symbol=item.occ_symbol,
+                    strike=Decimal(str(item.strike)),
+                    contract_type=ContractType(item.contract_type),
+                    expiration=item.expiration,
+                    gamma=Decimal(str(item.gamma)),
+                    open_interest=item.open_interest,
+                    dealer_gamma_exposure=Decimal(str(item.dealer_gamma_exposure)),
+                    sign=Decimal(str(item.sign)),
+                )
+                for item in self.gamma_exposure
+            ),
+            gamma_aggregate=self.gamma_aggregate.to_domain(),
+            gamma_flip=self.gamma_flip.to_domain(),
+            call_wall=_wall_to_domain(self.call_wall, CallWall),
+            put_wall=_wall_to_domain(self.put_wall, PutWall),
+            max_pain=self.max_pain.to_domain(),
+        )
+
+
+class DealerPositioningResponse(BaseModel):
+    schema_version: int = Field(examples=[1])
+    symbol: str = Field(examples=["SPY"])
+    as_of: str = Field(examples=["2026-01-15T14:30:00Z"])
+    dealer_state: Literal["Long Gamma", "Short Gamma", "Neutral"]
+    dealer_bias: Literal["Bullish", "Bearish", "Neutral"]
+    hedging_pressure: Number = Field(examples=[0.75])
+    expected_volatility: Literal["High", "Low", "Normal"]
+    liquidity_regime: Literal["Deep", "Balanced", "Thin"]
+    confidence_score: Number = Field(examples=[0.85])
+
+
+def _optional_decimal(value: Number | None) -> Decimal | None:
+    if value is None:
+        return None
+    return Decimal(str(value))
+
+
+def _wall_to_domain(wall: WallResponse | None, wall_type):  # noqa: ANN001
+    if wall is None:
+        return None
+    return wall_type(
+        strike=Decimal(str(wall.strike)),
+        gamma=Decimal(str(wall.gamma)),
+        open_interest=wall.open_interest,
+        volume=wall.volume,
+        confidence_score=Decimal(str(wall.confidence_score)),
+    )
 
 
 class OptionContractRequest(BaseModel):

@@ -143,6 +143,7 @@ def test_openapi_documents_option_response_models() -> None:
         ("/options/gamma-exposure", "post"): "GammaExposureResponse",
         ("/options/gamma-aggregate", "post"): "GammaAggregateResponse",
         ("/options/gamma-flip", "post"): "GammaFlipResponse",
+        ("/options/dealer-positioning", "post"): "DealerPositioningResponse",
         ("/options/max-pain", "post"): "MaxPainResponse",
     }
     for (path, method), schema_name in expected_refs.items():
