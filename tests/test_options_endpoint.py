@@ -100,3 +100,35 @@ def test_greeks_endpoint_rejects_domain_invalid_payload_with_422() -> None:
 
     assert response.status_code == 422
     assert response.status_code != 500
+
+
+def test_openapi_documents_option_response_models() -> None:
+    with TestClient(app) as client:
+        response = client.get("/openapi.json")
+
+    assert response.status_code == 200
+    openapi = response.json()
+    paths = openapi["paths"]
+
+    expected_refs = {
+        ("/options/{symbol}", "get"): "OptionChainResponse",
+        ("/options/greeks", "post"): "GreeksResponse",
+        ("/options/gamma-exposure", "post"): "GammaExposureResponse",
+    }
+    for (path, method), schema_name in expected_refs.items():
+        response_schema = paths[path][method]["responses"]["200"]["content"]["application/json"][
+            "schema"
+        ]
+        assert response_schema["$ref"].endswith(f"/{schema_name}")
+        assert "additionalProp1" not in str(response_schema)
+
+    schemas = openapi["components"]["schemas"]
+    assert schemas["OptionChainResponse"]["properties"]["contracts"]["items"]["$ref"].endswith(
+        "/OptionContractResponse"
+    )
+    assert schemas["GreeksResponse"]["properties"]["contracts"]["items"]["$ref"].endswith(
+        "/GreeksContractResponse"
+    )
+    assert schemas["GammaExposureResponse"]["properties"]["items"]["items"]["$ref"].endswith(
+        "/GammaExposureItemResponse"
+    )

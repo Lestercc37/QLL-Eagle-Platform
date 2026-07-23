@@ -5,7 +5,12 @@ from typing import Annotated
 
 from fastapi import APIRouter, Body, HTTPException, Request
 
-from backend.api.schemas import OptionChainRequest
+from backend.api.schemas import (
+    GammaExposureResponse,
+    GreeksResponse,
+    OptionChainRequest,
+    OptionChainResponse,
+)
 from backend.api.serializers import (
     chain_response,
     gamma_exposure_response,
@@ -53,19 +58,27 @@ OptionChainBody = Annotated[
 router = APIRouter(tags=["options"])
 
 
-@router.get("/options/{symbol}", summary="Load option chain")
+@router.get(
+    "/options/{symbol}",
+    response_model=OptionChainResponse,
+    summary="Load option chain",
+)
 def load_option_chain(
     symbol: str,
     request: Request,
     expiration: date | None = None,
-) -> dict[str, object]:
+) -> OptionChainResponse:
     container: Container = request.app.state.container
     chain = container.load_option_chain_use_case.execute(symbol, expiration)
-    return chain_response(chain)
+    return OptionChainResponse.model_validate(chain_response(chain))
 
 
-@router.post("/options/greeks", summary="Calculate deterministic Greeks for an option chain")
-def calculate_greeks(payload: OptionChainBody, request: Request) -> dict[str, object]:
+@router.post(
+    "/options/greeks",
+    response_model=GreeksResponse,
+    summary="Calculate deterministic Greeks for an option chain",
+)
+def calculate_greeks(payload: OptionChainBody, request: Request) -> GreeksResponse:
     print(
         "calculate_greeks runtime evidence:",
         {
@@ -81,18 +94,19 @@ def calculate_greeks(payload: OptionChainBody, request: Request) -> dict[str, ob
     container: Container = request.app.state.container
     chain = _chain_from_request(payload)
     enriched_chain = container.calculate_greeks_use_case.execute(chain)
-    return greeks_chain_response(enriched_chain)
+    return GreeksResponse.model_validate(greeks_chain_response(enriched_chain))
 
 
 @router.post(
     "/options/gamma-exposure",
+    response_model=GammaExposureResponse,
     summary="Calculate deterministic Gamma Exposure for an option chain",
 )
-def calculate_gamma_exposure(payload: OptionChainBody, request: Request) -> dict[str, object]:
+def calculate_gamma_exposure(payload: OptionChainBody, request: Request) -> GammaExposureResponse:
     container: Container = request.app.state.container
     chain = _chain_from_request(payload)
     gamma_exposures = container.calculate_gamma_exposure_use_case.execute(chain)
-    return gamma_exposure_response(gamma_exposures)
+    return GammaExposureResponse.model_validate(gamma_exposure_response(gamma_exposures))
 
 
 def _chain_from_request(payload: OptionChainRequest) -> OptionChain:
