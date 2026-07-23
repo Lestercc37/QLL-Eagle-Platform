@@ -157,21 +157,39 @@ class OptionChain:
 
 
 @dataclass(frozen=True, slots=True)
+class GammaAggregateStrike:
+    strike: Decimal
+    gamma: Decimal
+    cumulative_gamma: Decimal
+    contract_count: int
+
+    def __post_init__(self) -> None:
+        _ensure_positive_decimal(self.strike, InvalidStrikeError, "strike")
+        _ensure_finite_decimal(self.gamma, InvalidOptionError, "gamma")
+        _ensure_finite_decimal(self.cumulative_gamma, InvalidOptionError, "cumulative_gamma")
+        if self.contract_count < 0:
+            raise InvalidOptionError("contract_count cannot be negative")
+
+
+@dataclass(frozen=True, slots=True)
 class GammaAggregate:
     symbol: str
     as_of: datetime
-    gamma_flip: Decimal
-    call_wall: Decimal
-    put_wall: Decimal
-    max_pain: Decimal
-    net_gamma: Decimal
-    dealer_gamma_notional: Decimal
+    total_gamma: Decimal = Decimal("0")
+    strikes: tuple[GammaAggregateStrike, ...] = field(default_factory=tuple)
+    gamma_flip: Decimal = Decimal("0")
+    call_wall: Decimal = Decimal("0")
+    put_wall: Decimal = Decimal("0")
+    max_pain: Decimal = Decimal("0")
+    net_gamma: Decimal = Decimal("0")
+    dealer_gamma_notional: Decimal = Decimal("0")
 
     def __post_init__(self) -> None:
         if not self.symbol or not self.symbol.strip():
             raise InvalidOptionError("gamma aggregate symbol is required")
         object.__setattr__(self, "symbol", self.symbol.upper())
         for name in (
+            "total_gamma",
             "gamma_flip",
             "call_wall",
             "put_wall",

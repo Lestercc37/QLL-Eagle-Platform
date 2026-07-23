@@ -45,6 +45,24 @@ def greeks_chain_response(chain: OptionChain) -> dict[str, Any]:
     return payload
 
 
+def gamma_aggregate_response(gamma: GammaAggregate) -> dict[str, Any]:
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "symbol": gamma.symbol,
+        "as_of": _dt(gamma.as_of),
+        "total_gamma": _num(gamma.total_gamma),
+        "strikes": [
+            {
+                "strike": _num(item.strike),
+                "gamma": _num(item.gamma),
+                "cumulative_gamma": _num(item.cumulative_gamma),
+                "contract_count": item.contract_count,
+            }
+            for item in gamma.strikes
+        ],
+    }
+
+
 def gamma_exposure_response(items: tuple[GammaExposure, ...]) -> dict[str, Any]:
     return {
         "schema_version": SCHEMA_VERSION,

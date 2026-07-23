@@ -5,17 +5,19 @@ from dataclasses import dataclass
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
 from backend.adapters.greeks.fake import FakeGreeksCalculator
+from backend.adapters.greeks.gamma_aggregate import FakeGammaAggregateCalculator
 from backend.adapters.greeks.gamma_exposure import FakeGammaExposureCalculator
 from backend.adapters.providers.fake import FakeMarketDataProvider
 from backend.adapters.storage.postgresql import PostgreSQLStorage
 from backend.application.use_cases import (
+    CalculateGammaAggregateUseCase,
     CalculateGammaExposureUseCase,
     CalculateGreeksUseCase,
     GetMarketSnapshotUseCase,
     LoadOptionChainUseCase,
 )
 from backend.core.settings import Settings, get_settings
-from backend.domain.ports import IDataProvider, IGammaExposureCalculator, IGreeksCalculator
+from backend.domain.ports import IDataProvider, IGammaAggregateCalculator, IGammaExposureCalculator, IGreeksCalculator
 
 
 @dataclass(frozen=True)
@@ -33,10 +35,12 @@ class Container:
     market_data_provider: IDataProvider
     greeks_calculator: IGreeksCalculator
     gamma_exposure_calculator: IGammaExposureCalculator
+    gamma_aggregate_calculator: IGammaAggregateCalculator
     get_market_snapshot_use_case: GetMarketSnapshotUseCase
     load_option_chain_use_case: LoadOptionChainUseCase
     calculate_greeks_use_case: CalculateGreeksUseCase
     calculate_gamma_exposure_use_case: CalculateGammaExposureUseCase
+    calculate_gamma_aggregate_use_case: CalculateGammaAggregateUseCase
 
 
 def build_container() -> Container:
@@ -50,11 +54,15 @@ def build_container() -> Container:
     market_data_provider = FakeMarketDataProvider()
     greeks_calculator = FakeGreeksCalculator()
     gamma_exposure_calculator = FakeGammaExposureCalculator()
+    gamma_aggregate_calculator = FakeGammaAggregateCalculator(gamma_exposure_calculator)
     get_market_snapshot_use_case = GetMarketSnapshotUseCase(market_data_provider)
     load_option_chain_use_case = LoadOptionChainUseCase(market_data_provider)
     calculate_greeks_use_case = CalculateGreeksUseCase(greeks_calculator)
     calculate_gamma_exposure_use_case = CalculateGammaExposureUseCase(
         gamma_exposure_calculator
+    )
+    calculate_gamma_aggregate_use_case = CalculateGammaAggregateUseCase(
+        gamma_aggregate_calculator
     )
     return Container(
         settings=settings,
@@ -64,8 +72,10 @@ def build_container() -> Container:
         market_data_provider=market_data_provider,
         greeks_calculator=greeks_calculator,
         gamma_exposure_calculator=gamma_exposure_calculator,
+        gamma_aggregate_calculator=gamma_aggregate_calculator,
         get_market_snapshot_use_case=get_market_snapshot_use_case,
         load_option_chain_use_case=load_option_chain_use_case,
         calculate_greeks_use_case=calculate_greeks_use_case,
         calculate_gamma_exposure_use_case=calculate_gamma_exposure_use_case,
+        calculate_gamma_aggregate_use_case=calculate_gamma_aggregate_use_case,
     )

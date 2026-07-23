@@ -6,6 +6,7 @@ from typing import Annotated
 from fastapi import APIRouter, Body, HTTPException, Request
 
 from backend.api.schemas import (
+    GammaAggregateResponse,
     GammaExposureResponse,
     GreeksResponse,
     OptionChainRequest,
@@ -13,6 +14,7 @@ from backend.api.schemas import (
 )
 from backend.api.serializers import (
     chain_response,
+    gamma_aggregate_response,
     gamma_exposure_response,
     greeks_chain_response,
 )
@@ -95,6 +97,18 @@ def calculate_greeks(payload: OptionChainBody, request: Request) -> GreeksRespon
     chain = _chain_from_request(payload)
     enriched_chain = container.calculate_greeks_use_case.execute(chain)
     return GreeksResponse.model_validate(greeks_chain_response(enriched_chain))
+
+
+@router.post(
+    "/options/gamma-aggregate",
+    response_model=GammaAggregateResponse,
+    summary="Calculate Gamma Aggregate by strike for an option chain",
+)
+def calculate_gamma_aggregate(payload: OptionChainBody, request: Request) -> GammaAggregateResponse:
+    container: Container = request.app.state.container
+    chain = _chain_from_request(payload)
+    gamma_aggregate = container.calculate_gamma_aggregate_use_case.execute(chain)
+    return GammaAggregateResponse.model_validate(gamma_aggregate_response(gamma_aggregate))
 
 
 @router.post(
