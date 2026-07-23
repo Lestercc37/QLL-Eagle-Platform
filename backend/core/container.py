@@ -54,7 +54,7 @@ def build_container() -> Container:
     market_data_provider = FakeMarketDataProvider()
     greeks_calculator = FakeGreeksCalculator()
     gamma_exposure_calculator = FakeGammaExposureCalculator()
-    gamma_aggregate_calculator = FakeGammaAggregateCalculator(gamma_exposure_calculator)
+    gamma_aggregate_calculator = FakeGammaAggregateCalculator()
     get_market_snapshot_use_case = GetMarketSnapshotUseCase(market_data_provider)
     load_option_chain_use_case = LoadOptionChainUseCase(market_data_provider)
     calculate_greeks_use_case = CalculateGreeksUseCase(greeks_calculator)
@@ -62,7 +62,7 @@ def build_container() -> Container:
         gamma_exposure_calculator
     )
     calculate_gamma_aggregate_use_case = CalculateGammaAggregateUseCase(
-        gamma_aggregate_calculator
+        gamma_exposure_calculator, gamma_aggregate_calculator
     )
     return Container(
         settings=settings,

@@ -157,26 +157,39 @@ class OptionChain:
 
 
 @dataclass(frozen=True, slots=True)
-class GammaAggregateStrike:
+class GammaAggregateItem:
     strike: Decimal
-    gamma: Decimal
-    cumulative_gamma: Decimal
+    total_gamma_exposure: Decimal
+    call_gamma_exposure: Decimal
+    put_gamma_exposure: Decimal
+    net_gamma: Decimal
     contract_count: int
 
     def __post_init__(self) -> None:
         _ensure_positive_decimal(self.strike, InvalidStrikeError, "strike")
-        _ensure_finite_decimal(self.gamma, InvalidOptionError, "gamma")
-        _ensure_finite_decimal(self.cumulative_gamma, InvalidOptionError, "cumulative_gamma")
+        for name in (
+            "total_gamma_exposure",
+            "call_gamma_exposure",
+            "put_gamma_exposure",
+            "net_gamma",
+        ):
+            _ensure_finite_decimal(getattr(self, name), InvalidOptionError, name)
         if self.contract_count < 0:
             raise InvalidOptionError("contract_count cannot be negative")
+
+
+GammaAggregateStrike = GammaAggregateItem
 
 
 @dataclass(frozen=True, slots=True)
 class GammaAggregate:
     symbol: str
     as_of: datetime
+    items: tuple[GammaAggregateItem, ...] = field(default_factory=tuple)
+    total_market_gamma: Decimal = Decimal("0")
+    positive_gamma: Decimal = Decimal("0")
+    negative_gamma: Decimal = Decimal("0")
     total_gamma: Decimal = Decimal("0")
-    strikes: tuple[GammaAggregateStrike, ...] = field(default_factory=tuple)
     gamma_flip: Decimal = Decimal("0")
     call_wall: Decimal = Decimal("0")
     put_wall: Decimal = Decimal("0")
@@ -189,6 +202,9 @@ class GammaAggregate:
             raise InvalidOptionError("gamma aggregate symbol is required")
         object.__setattr__(self, "symbol", self.symbol.upper())
         for name in (
+            "total_market_gamma",
+            "positive_gamma",
+            "negative_gamma",
             "total_gamma",
             "gamma_flip",
             "call_wall",
@@ -198,6 +214,10 @@ class GammaAggregate:
             "dealer_gamma_notional",
         ):
             _ensure_finite_decimal(getattr(self, name), InvalidOptionError, name)
+
+    @property
+    def strikes(self) -> tuple[GammaAggregateItem, ...]:
+        return self.items
 
     @property
     def dealer_position(self) -> str:

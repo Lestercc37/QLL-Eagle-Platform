@@ -70,19 +70,26 @@ class GammaExposureResponse(BaseModel):
     items: list[GammaExposureItemResponse]
 
 
-class GammaAggregateStrikeResponse(BaseModel):
+class GammaAggregateItemResponse(BaseModel):
     strike: Number = Field(examples=[540])
-    gamma: Number = Field(examples=[90])
-    cumulative_gamma: Number = Field(examples=[90])
+    total_gamma_exposure: Number = Field(examples=[390])
+    call_gamma_exposure: Number = Field(examples=[240])
+    put_gamma_exposure: Number = Field(examples=[-150])
+    net_gamma: Number = Field(examples=[90])
     contract_count: int = Field(examples=[2])
+
+
+GammaAggregateStrikeResponse = GammaAggregateItemResponse
 
 
 class GammaAggregateResponse(BaseModel):
     schema_version: int = Field(examples=[1])
     symbol: str = Field(examples=["SPY"])
     as_of: str = Field(examples=["2026-01-15T14:30:00Z"])
-    total_gamma: Number = Field(examples=[90])
-    strikes: list[GammaAggregateStrikeResponse]
+    total_market_gamma: Number = Field(examples=[280])
+    positive_gamma: Number = Field(examples=[280])
+    negative_gamma: Number = Field(examples=[0])
+    items: list[GammaAggregateItemResponse]
 
 
 class OptionContractRequest(BaseModel):

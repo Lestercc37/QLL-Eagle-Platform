@@ -141,6 +141,6 @@ def test_openapi_documents_option_response_models() -> None:
     assert schemas["GammaExposureResponse"]["properties"]["items"]["items"]["$ref"].endswith(
         "/GammaExposureItemResponse"
     )
-    assert schemas["GammaAggregateResponse"]["properties"]["strikes"]["items"]["$ref"].endswith(
-        "/GammaAggregateStrikeResponse"
+    assert schemas["GammaAggregateResponse"]["properties"]["items"]["items"]["$ref"].endswith(
+        "/GammaAggregateItemResponse"
     )
