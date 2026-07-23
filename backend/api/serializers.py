@@ -11,6 +11,7 @@ from backend.domain.models import (
     GammaAggregate,
     GammaExposure,
     GammaFlip,
+    InstitutionalAnalysis,
     Greeks,
     MarketSnapshot,
     MaxPain,
@@ -150,6 +151,26 @@ def max_pain_response(max_pain: MaxPain) -> dict[str, Any]:
         ],
     }
 
+
+
+def institutional_analysis_response(analysis: InstitutionalAnalysis) -> dict[str, Any]:
+    return {
+        "schema_version": analysis.schema_version,
+        "timestamp": _dt(analysis.timestamp),
+        "overall_bias": analysis.overall_bias,
+        "confidence_score": _num(analysis.confidence_score),
+        "market_regime": analysis.market_regime,
+        "market_snapshot": market_response(analysis.market_snapshot),
+        "option_chain": greeks_chain_response(analysis.option_chain),
+        "gamma_exposure": gamma_exposure_response(analysis.gamma_exposure),
+        "gamma_aggregate": gamma_aggregate_response(analysis.gamma_aggregate),
+        "peak_gamma_strike": _num(analysis.gamma_aggregate.peak_gamma_strike),
+        "gamma_flip": gamma_flip_response(analysis.gamma_flip),
+        "call_wall": _wall_response(analysis.walls.call_wall),
+        "put_wall": _wall_response(analysis.walls.put_wall),
+        "max_pain": max_pain_response(analysis.max_pain),
+        "dealer_positioning": dealer_positioning_response(analysis.dealer_positioning),
+    }
 
 def option_chain_from_payload(payload: dict[str, Any]) -> OptionChain:
     return OptionChain(

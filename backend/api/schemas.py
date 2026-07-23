@@ -280,6 +280,24 @@ class DealerPositioningRequest(BaseModel):
         )
 
 
+class InstitutionalAnalysisResponse(BaseModel):
+    schema_version: int = Field(examples=[1])
+    timestamp: str = Field(examples=["2026-01-15T14:30:00Z"])
+    overall_bias: Literal["Bullish", "Bearish", "Neutral"]
+    confidence_score: Number = Field(examples=[0.85])
+    market_regime: str = Field(examples=["Normal"])
+    market_snapshot: MarketSnapshotResponse
+    option_chain: GreeksResponse
+    gamma_exposure: GammaExposureResponse
+    gamma_aggregate: GammaAggregateResponse
+    peak_gamma_strike: Number = Field(examples=[545])
+    gamma_flip: GammaFlipResponse
+    call_wall: WallResponse | None = None
+    put_wall: WallResponse | None = None
+    max_pain: MaxPainResponse
+    dealer_positioning: "DealerPositioningResponse"
+
+
 class DealerPositioningResponse(BaseModel):
     schema_version: int = Field(examples=[1])
     symbol: str = Field(examples=["SPY"])
