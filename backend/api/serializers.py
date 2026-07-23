@@ -50,15 +50,19 @@ def gamma_aggregate_response(gamma: GammaAggregate) -> dict[str, Any]:
         "schema_version": SCHEMA_VERSION,
         "symbol": gamma.symbol,
         "as_of": _dt(gamma.as_of),
-        "total_gamma": _num(gamma.total_gamma),
-        "strikes": [
+        "total_market_gamma": _num(gamma.total_market_gamma),
+        "positive_gamma": _num(gamma.positive_gamma),
+        "negative_gamma": _num(gamma.negative_gamma),
+        "items": [
             {
                 "strike": _num(item.strike),
-                "gamma": _num(item.gamma),
-                "cumulative_gamma": _num(item.cumulative_gamma),
+                "total_gamma_exposure": _num(item.total_gamma_exposure),
+                "call_gamma_exposure": _num(item.call_gamma_exposure),
+                "put_gamma_exposure": _num(item.put_gamma_exposure),
+                "net_gamma": _num(item.net_gamma),
                 "contract_count": item.contract_count,
             }
-            for item in gamma.strikes
+            for item in gamma.items
         ],
     }
 

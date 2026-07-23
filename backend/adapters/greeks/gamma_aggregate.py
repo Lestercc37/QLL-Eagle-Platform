@@ -1,52 +1,67 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from datetime import datetime
 from decimal import Decimal
 
-from backend.adapters.greeks.gamma_exposure import FakeGammaExposureCalculator
-from backend.domain.models import GammaAggregate, GammaAggregateStrike, OptionChain
-from backend.domain.ports import IGammaAggregateCalculator, IGammaExposureCalculator
+from backend.domain.models import (
+    ContractType,
+    GammaAggregate,
+    GammaAggregateItem,
+    GammaExposure,
+)
+from backend.domain.ports import IGammaAggregateCalculator
 
 
 class FakeGammaAggregateCalculator(IGammaAggregateCalculator):
     """Deterministic Gamma Aggregate calculator based on Gamma Exposure."""
 
-    def __init__(
-        self,
-        gamma_exposure_calculator: IGammaExposureCalculator | None = None,
-    ) -> None:
-        self._gamma_exposure_calculator = (
-            gamma_exposure_calculator or FakeGammaExposureCalculator()
-        )
-
-    def calculate(self, chain: OptionChain) -> GammaAggregate:
-        exposures = self._gamma_exposure_calculator.calculate(chain)
-        grouped_gamma: dict[Decimal, Decimal] = defaultdict(lambda: Decimal("0"))
-        grouped_contract_count: dict[Decimal, int] = defaultdict(int)
+    def calculate(
+        self, exposures: tuple[GammaExposure, ...], symbol: str, as_of: datetime
+    ) -> GammaAggregate:
+        call_gamma_by_strike: dict[Decimal, Decimal] = defaultdict(lambda: Decimal("0"))
+        put_gamma_by_strike: dict[Decimal, Decimal] = defaultdict(lambda: Decimal("0"))
+        contract_count_by_strike: dict[Decimal, int] = defaultdict(int)
 
         for exposure in exposures:
-            grouped_gamma[exposure.strike] += exposure.dealer_gamma_exposure
-            grouped_contract_count[exposure.strike] += 1
+            if exposure.contract_type == ContractType.CALL:
+                call_gamma_by_strike[exposure.strike] += exposure.dealer_gamma_exposure
+            else:
+                put_gamma_by_strike[exposure.strike] += exposure.dealer_gamma_exposure
+            contract_count_by_strike[exposure.strike] += 1
 
-        cumulative_gamma = Decimal("0")
-        strikes: list[GammaAggregateStrike] = []
-        for strike in sorted(grouped_gamma):
-            gamma = grouped_gamma[strike]
-            cumulative_gamma += gamma
-            strikes.append(
-                GammaAggregateStrike(
+        items: list[GammaAggregateItem] = []
+        positive_gamma = Decimal("0")
+        negative_gamma = Decimal("0")
+        for strike in sorted(contract_count_by_strike):
+            call_gamma_exposure = call_gamma_by_strike[strike]
+            put_gamma_exposure = put_gamma_by_strike[strike]
+            net_gamma = call_gamma_exposure + put_gamma_exposure
+            total_gamma_exposure = abs(call_gamma_exposure) + abs(put_gamma_exposure)
+            if net_gamma > 0:
+                positive_gamma += net_gamma
+            elif net_gamma < 0:
+                negative_gamma += net_gamma
+            items.append(
+                GammaAggregateItem(
                     strike=strike,
-                    gamma=gamma,
-                    cumulative_gamma=cumulative_gamma,
-                    contract_count=grouped_contract_count[strike],
+                    total_gamma_exposure=total_gamma_exposure,
+                    call_gamma_exposure=call_gamma_exposure,
+                    put_gamma_exposure=put_gamma_exposure,
+                    net_gamma=net_gamma,
+                    contract_count=contract_count_by_strike[strike],
                 )
             )
 
+        total_market_gamma = sum((item.net_gamma for item in items), Decimal("0"))
         return GammaAggregate(
-            symbol=chain.symbol,
-            as_of=chain.as_of,
-            total_gamma=sum(grouped_gamma.values(), Decimal("0")),
-            strikes=tuple(strikes),
-            net_gamma=sum(grouped_gamma.values(), Decimal("0")),
-            dealer_gamma_notional=sum(grouped_gamma.values(), Decimal("0")),
+            symbol=symbol,
+            as_of=as_of,
+            items=tuple(items),
+            total_market_gamma=total_market_gamma,
+            positive_gamma=positive_gamma,
+            negative_gamma=negative_gamma,
+            total_gamma=total_market_gamma,
+            net_gamma=total_market_gamma,
+            dealer_gamma_notional=total_market_gamma,
         )

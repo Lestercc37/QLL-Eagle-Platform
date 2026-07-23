@@ -29,7 +29,9 @@ class IGammaExposureCalculator(Protocol):
 
 
 class IGammaAggregateCalculator(Protocol):
-    def calculate(self, chain: OptionChain) -> GammaAggregate: ...
+    def calculate(
+        self, exposures: tuple[GammaExposure, ...], symbol: str, as_of: datetime
+    ) -> GammaAggregate: ...
 
 
 class IStorage(Protocol):

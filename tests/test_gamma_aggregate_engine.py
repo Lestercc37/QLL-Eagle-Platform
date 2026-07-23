@@ -4,11 +4,12 @@ from datetime import date, datetime, timezone
 from decimal import Decimal
 
 from backend.adapters.greeks.gamma_aggregate import FakeGammaAggregateCalculator
+from backend.adapters.greeks.gamma_exposure import FakeGammaExposureCalculator
 from backend.application.use_cases import CalculateGammaAggregateUseCase
 from backend.domain.models import (
     ContractType,
     GammaAggregate,
-    GammaAggregateStrike,
+    GammaAggregateItem,
     Greeks,
     OptionChain,
     OptionContract,
@@ -17,48 +18,61 @@ from backend.domain.ports import IGammaAggregateCalculator
 
 
 def test_fake_gamma_aggregate_calculator_groups_gamma_exposure_by_strike() -> None:
-    aggregate = FakeGammaAggregateCalculator().calculate(_chain())
+    chain = _chain()
+    exposures = FakeGammaExposureCalculator().calculate(chain)
+
+    aggregate = FakeGammaAggregateCalculator().calculate(exposures, chain.symbol, chain.as_of)
 
     assert aggregate == GammaAggregate(
         symbol="SPY",
         as_of=datetime(2026, 1, 15, 14, 30, tzinfo=timezone.utc),
-        total_gamma=Decimal("280.000"),
-        strikes=(
-            GammaAggregateStrike(
+        items=(
+            GammaAggregateItem(
                 strike=Decimal("540"),
-                gamma=Decimal("90.000"),
-                cumulative_gamma=Decimal("90.000"),
+                total_gamma_exposure=Decimal("390.000"),
+                call_gamma_exposure=Decimal("240.000"),
+                put_gamma_exposure=Decimal("-150.000"),
+                net_gamma=Decimal("90.000"),
                 contract_count=2,
             ),
-            GammaAggregateStrike(
+            GammaAggregateItem(
                 strike=Decimal("545"),
-                gamma=Decimal("190.000"),
-                cumulative_gamma=Decimal("280.000"),
+                total_gamma_exposure=Decimal("210.000"),
+                call_gamma_exposure=Decimal("200.000"),
+                put_gamma_exposure=Decimal("-10.000"),
+                net_gamma=Decimal("190.000"),
                 contract_count=2,
             ),
         ),
+        total_market_gamma=Decimal("280.000"),
+        positive_gamma=Decimal("280.000"),
+        negative_gamma=Decimal("0"),
+        total_gamma=Decimal("280.000"),
         net_gamma=Decimal("280.000"),
         dealer_gamma_notional=Decimal("280.000"),
     )
 
 
-def test_calculate_gamma_aggregate_use_case_depends_only_on_port() -> None:
+def test_calculate_gamma_aggregate_use_case_uses_gamma_exposure_output() -> None:
     class RecordingGammaAggregateCalculator:
         def __init__(self) -> None:
-            self.received: OptionChain | None = None
+            self.received_symbol: str | None = None
+            self.received_exposure_count = 0
 
-        def calculate(self, chain: OptionChain) -> GammaAggregate:
-            self.received = chain
-            return GammaAggregate(symbol=chain.symbol, as_of=chain.as_of)
+        def calculate(self, exposures, symbol, as_of) -> GammaAggregate:  # noqa: ANN001
+            self.received_symbol = symbol
+            self.received_exposure_count = len(exposures)
+            return GammaAggregate(symbol=symbol, as_of=as_of)
 
     calculator: IGammaAggregateCalculator = RecordingGammaAggregateCalculator()
-    use_case = CalculateGammaAggregateUseCase(calculator)
+    use_case = CalculateGammaAggregateUseCase(FakeGammaExposureCalculator(), calculator)
     chain = _chain()
 
     result = use_case.execute(chain)
 
     assert result.symbol == "SPY"
-    assert calculator.received is chain
+    assert calculator.received_symbol == "SPY"
+    assert calculator.received_exposure_count == len(chain.contracts)
 
 
 def test_gamma_aggregate_endpoint_returns_strike_aggregate() -> None:
@@ -73,18 +87,24 @@ def test_gamma_aggregate_endpoint_returns_strike_aggregate() -> None:
         "schema_version": 1,
         "symbol": "SPY",
         "as_of": "2026-01-15T14:30:00Z",
-        "total_gamma": 280,
-        "strikes": [
+        "total_market_gamma": 280,
+        "positive_gamma": 280,
+        "negative_gamma": 0,
+        "items": [
             {
                 "strike": 540,
-                "gamma": 90,
-                "cumulative_gamma": 90,
+                "total_gamma_exposure": 390,
+                "call_gamma_exposure": 240,
+                "put_gamma_exposure": -150,
+                "net_gamma": 90,
                 "contract_count": 2,
             },
             {
                 "strike": 545,
-                "gamma": 190,
-                "cumulative_gamma": 280,
+                "total_gamma_exposure": 210,
+                "call_gamma_exposure": 200,
+                "put_gamma_exposure": -10,
+                "net_gamma": 190,
                 "contract_count": 2,
             },
         ],
