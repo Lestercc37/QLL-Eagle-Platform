@@ -61,6 +61,14 @@ def test_gamma_aggregate_endpoint_rejects_missing_option_chain_fields() -> None:
     assert response.status_code != 500
 
 
+def test_gamma_flip_endpoint_rejects_missing_gamma_aggregate_fields() -> None:
+    with TestClient(app) as client:
+        response = client.post("/options/gamma-flip", json={"additionalProp1": {}})
+
+    assert response.status_code == 422
+    assert response.status_code != 500
+
+
 def test_option_chain_request_schema_includes_valid_swagger_example() -> None:
     with TestClient(app) as client:
         response = client.get("/openapi.json")
@@ -82,6 +90,12 @@ def test_options_post_request_bodies_use_option_chain_request_schema() -> None:
         assert request_body["schema"]["$ref"].endswith("/OptionChainRequest")
         assert request_body["examples"]["option_chain"]["value"]["symbol"] == "SPY"
         assert "additionalProp1" not in str(request_body)
+    gamma_flip_body = paths["/options/gamma-flip"]["post"]["requestBody"]["content"][
+        "application/json"
+    ]
+    assert gamma_flip_body["schema"]["$ref"].endswith("/GammaFlipRequest")
+    assert gamma_flip_body["examples"]["gamma_aggregate"]["value"]["symbol"] == "SPY"
+    assert "additionalProp1" not in str(gamma_flip_body)
 
 
 def test_greeks_endpoint_rejects_domain_invalid_payload_with_422() -> None:
@@ -123,6 +137,7 @@ def test_openapi_documents_option_response_models() -> None:
         ("/options/greeks", "post"): "GreeksResponse",
         ("/options/gamma-exposure", "post"): "GammaExposureResponse",
         ("/options/gamma-aggregate", "post"): "GammaAggregateResponse",
+        ("/options/gamma-flip", "post"): "GammaFlipResponse",
     }
     for (path, method), schema_name in expected_refs.items():
         response_schema = paths[path][method]["responses"]["200"]["content"]["application/json"][
@@ -144,3 +159,6 @@ def test_openapi_documents_option_response_models() -> None:
     assert schemas["GammaAggregateResponse"]["properties"]["items"]["items"]["$ref"].endswith(
         "/GammaAggregateItemResponse"
     )
+    assert schemas["GammaFlipResponse"]["properties"]["gamma_flip_price"]["anyOf"][1][
+        "type"
+    ] == "null"

@@ -7,6 +7,7 @@ from backend.domain.models import (
     FlowEvent,
     GammaAggregate,
     GammaExposure,
+    GammaFlip,
     MarketPrice,
     MarketSnapshot,
     OptionChain,
@@ -32,6 +33,10 @@ class IGammaAggregateCalculator(Protocol):
     def calculate(
         self, exposures: tuple[GammaExposure, ...], symbol: str, as_of: datetime
     ) -> GammaAggregate: ...
+
+
+class IGammaFlipCalculator(Protocol):
+    def calculate(self, aggregate: GammaAggregate) -> GammaFlip: ...
 
 
 class IStorage(Protocol):

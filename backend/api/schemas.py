@@ -6,7 +6,14 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from backend.domain.models import ContractType, Greeks, OptionChain, OptionContract
+from backend.domain.models import (
+    ContractType,
+    GammaAggregate,
+    GammaAggregateItem,
+    Greeks,
+    OptionChain,
+    OptionContract,
+)
 
 
 Number = int | float
@@ -93,6 +100,70 @@ class GammaAggregateResponse(BaseModel):
     peak_gamma_strike: Number = Field(examples=[545])
     peak_gamma_value: Number = Field(examples=[190])
     items: list[GammaAggregateItemResponse]
+
+
+class GammaFlipRequest(BaseModel):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "symbol": "SPY",
+                "as_of": "2026-01-15T14:30:00Z",
+                "items": [
+                    {
+                        "strike": 540,
+                        "total_gamma_exposure": 390,
+                        "call_gamma_exposure": 240,
+                        "put_gamma_exposure": 150,
+                        "net_gamma": 90,
+                        "contract_count": 2,
+                        "absolute_gamma": 90,
+                    },
+                    {
+                        "strike": 545,
+                        "total_gamma_exposure": 210,
+                        "call_gamma_exposure": 200,
+                        "put_gamma_exposure": 10,
+                        "net_gamma": -10,
+                        "contract_count": 2,
+                        "absolute_gamma": 10,
+                    },
+                ],
+            }
+        }
+    )
+
+    symbol: str = Field(min_length=1, examples=["SPY"])
+    as_of: datetime = Field(examples=["2026-01-15T14:30:00Z"])
+    items: list[GammaAggregateItemResponse] = Field(min_length=1)
+
+    def to_domain(self) -> GammaAggregate:
+        return GammaAggregate(
+            symbol=self.symbol,
+            as_of=self.as_of,
+            items=tuple(
+                GammaAggregateItem(
+                    strike=Decimal(str(item.strike)),
+                    total_gamma_exposure=Decimal(str(item.total_gamma_exposure)),
+                    call_gamma_exposure=Decimal(str(item.call_gamma_exposure)),
+                    put_gamma_exposure=Decimal(str(item.put_gamma_exposure)),
+                    net_gamma=Decimal(str(item.net_gamma)),
+                    contract_count=item.contract_count,
+                    absolute_gamma=Decimal(str(item.absolute_gamma)),
+                )
+                for item in self.items
+            ),
+        )
+
+
+class GammaFlipResponse(BaseModel):
+    schema_version: int = Field(examples=[1])
+    gamma_flip_price: Number | None = Field(default=None, examples=[544.5])
+    lower_strike: Number | None = Field(default=None, examples=[540])
+    upper_strike: Number | None = Field(default=None, examples=[545])
+    lower_gamma: Number | None = Field(default=None, examples=[90])
+    upper_gamma: Number | None = Field(default=None, examples=[-10])
+    interpolation_ratio: Number | None = Field(default=None, examples=[0.9])
+    flip_found: bool = Field(examples=[True])
 
 
 class OptionContractRequest(BaseModel):
