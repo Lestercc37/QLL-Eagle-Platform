@@ -85,7 +85,12 @@ def test_options_post_request_bodies_use_option_chain_request_schema() -> None:
 
     assert response.status_code == 200
     paths = response.json()["paths"]
-    for path in ("/options/greeks", "/options/gamma-exposure", "/options/gamma-aggregate"):
+    for path in (
+        "/options/greeks",
+        "/options/gamma-exposure",
+        "/options/gamma-aggregate",
+        "/options/max-pain",
+    ):
         request_body = paths[path]["post"]["requestBody"]["content"]["application/json"]
         assert request_body["schema"]["$ref"].endswith("/OptionChainRequest")
         assert request_body["examples"]["option_chain"]["value"]["symbol"] == "SPY"
@@ -138,6 +143,7 @@ def test_openapi_documents_option_response_models() -> None:
         ("/options/gamma-exposure", "post"): "GammaExposureResponse",
         ("/options/gamma-aggregate", "post"): "GammaAggregateResponse",
         ("/options/gamma-flip", "post"): "GammaFlipResponse",
+        ("/options/max-pain", "post"): "MaxPainResponse",
     }
     for (path, method), schema_name in expected_refs.items():
         response_schema = paths[path][method]["responses"]["200"]["content"]["application/json"][

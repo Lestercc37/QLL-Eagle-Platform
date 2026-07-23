@@ -10,6 +10,7 @@ from backend.api.schemas import (
     GammaExposureResponse,
     GammaFlipRequest,
     GammaFlipResponse,
+    MaxPainResponse,
     WallsResponse,
     GreeksResponse,
     OptionChainRequest,
@@ -20,6 +21,7 @@ from backend.api.serializers import (
     gamma_aggregate_response,
     gamma_exposure_response,
     gamma_flip_response,
+    max_pain_response,
     walls_response,
     greeks_chain_response,
 )
@@ -161,6 +163,18 @@ def calculate_gamma_exposure(payload: OptionChainBody, request: Request) -> Gamm
     chain = _chain_from_request(payload)
     gamma_exposures = container.calculate_gamma_exposure_use_case.execute(chain)
     return GammaExposureResponse.model_validate(gamma_exposure_response(gamma_exposures))
+
+
+@router.post(
+    "/options/max-pain",
+    response_model=MaxPainResponse,
+    summary="Calculate institutional Max Pain for an option chain",
+)
+def calculate_max_pain(payload: OptionChainBody, request: Request) -> MaxPainResponse:
+    container: Container = request.app.state.container
+    chain = _chain_from_request(payload)
+    max_pain = container.calculate_max_pain_use_case.execute(chain)
+    return MaxPainResponse.model_validate(max_pain_response(max_pain))
 
 
 @router.post(
